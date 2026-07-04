@@ -164,7 +164,8 @@
     overflow:hidden;
     cursor:pointer;
     box-shadow:var(--shadow);
-    touch-action:none;
+    touch-action:pan-y;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
   }
   .sched-card.overlap{
     outline:2px solid var(--danger);
@@ -244,21 +245,32 @@
     padding:4px 12px 16px 12px;
     display:flex; flex-direction:column; gap:8px;
   }
+  .panel-body > *{ flex-shrink:0; } /* prevent cards being squashed when list is long */
   .unsched-card{
-    display:flex; align-items:center; gap:10px;
+    display:flex; align-items:center; gap:8px;
     border-radius:12px;
     border-left:6px solid var(--c);
     background:color-mix(in srgb, var(--c) 10%, white);
-    padding:10px 12px;
-    min-height:44px;
+    padding:10px 10px 10px 6px;
+    min-height:56px;
     box-shadow:var(--shadow);
-    touch-action:none;
+    overflow:hidden;
   }
   .unsched-card .info{ flex:1; min-width:0; }
-  .unsched-card .name{ font-size:15px; font-weight:700; }
-  .unsched-card .meta{ font-size:11.5px; color:#6b5f4f; }
+  .unsched-card .name{
+    font-size:15px; font-weight:700; line-height:1.35;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .unsched-card .meta{
+    font-size:12px; color:#6b5f4f;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
   .unsched-card .drag-handle{
-    font-size:18px; color:#a3937a; padding:6px;
+    font-size:20px; color:#a3937a;
+    width:40px; min-height:48px;
+    display:flex; align-items:center; justify-content:center;
+    touch-action:none; cursor:grab;
+    flex-shrink:0;
   }
   .unsched-card .add-btn{
     border:none; background:var(--brick); color:#fff;
@@ -298,6 +310,7 @@
     overflow-y:auto; padding:14px 16px 10px 16px;
     display:flex; flex-direction:column; gap:14px;
   }
+  .sheet-body > *{ flex-shrink:0; }
   .field label{
     display:block; font-size:12.5px; font-weight:700; color:#8a7c68; margin-bottom:5px;
   }
@@ -435,7 +448,7 @@
     <div class="panel-handle"></div>
     <div class="panel-header">
       <h2 class="serif">待排行程清單</h2>
-      <span class="hint">按住卡片可拖曳，或點「加入」選時間</span>
+      <span class="hint">拖 ⠿ 排入，或點「加入」選時間</span>
     </div>
     <div class="panel-body" id="unschedList"></div>
   </div>
@@ -1372,7 +1385,7 @@ const DEFAULT_STATE = {
         <div class="meta">${escapeHtml(it.location||it.note||'')}</div>
       `;
       attachCardOpen(card, it, 'sched');
-      attachDrag(card, {type:'sched', id:it.id});
+      attachDrag(card, {type:'sched', id:it.id}, {longpress:true});
       itemsLayer.appendChild(card);
     });
   }
@@ -1402,11 +1415,15 @@ const DEFAULT_STATE = {
       card.style.setProperty('--c', `var(--cat-${it.cat})`);
       card.dataset.id = it.id;
       const district = extractDistrict(it.location);
+      const metaBits = [];
+      if(district) metaBits.push('📍'+district);
+      metaBits.push(it.duration+'分鐘');
+      if(!district && it.location) metaBits.push(escapeHtml(it.location));
       card.innerHTML = `
         <div class="drag-handle">⠿</div>
         <div class="info">
           <div class="name">${escapeHtml(it.name)}</div>
-          <div class="meta">${district?('📍'+district+' ・ '):''}${it.duration}分鐘${it.location?(' ・ '+escapeHtml(it.location)):''}</div>
+          <div class="meta">${metaBits.join(' ・ ')}</div>
         </div>
         <button class="add-btn">加入</button>
       `;
@@ -1416,9 +1433,11 @@ const DEFAULT_STATE = {
       });
       card.addEventListener('click', (e)=>{
         if(e.target.classList.contains('add-btn')) return;
+        if(e.target.closest('.drag-handle')) return;
+        if(dragCtx && dragCtx.moved) return;
         openModalFor(it,'unsched');
       });
-      attachDrag(card, {type:'unsched', id:it.id});
+      attachDrag(card.querySelector('.drag-handle'), {type:'unsched', id:it.id}, {visual:card});
       list.appendChild(card);
     });
   }
@@ -1795,17 +1814,54 @@ const DEFAULT_STATE = {
   const dragToast = document.getElementById('dragToast');
   let ghostEl = null;
 
-  function attachDrag(el, ref){
+  function blockTouchScroll(ev){ ev.preventDefault(); }
+
+  function attachDrag(el, ref, opts){
+    opts = opts || {};
     el.addEventListener('pointerdown', (e)=>{
       if(e.target.classList.contains('add-btn')) return;
-      startDrag(e, el, ref);
+      if(opts.longpress && e.pointerType !== 'mouse'){
+        beginLongPress(e, el, ref, opts);
+      } else {
+        e.preventDefault();
+        trackDrag(e, el, ref, opts, false);
+      }
     });
   }
 
-  function startDrag(e, el, ref){
-    e.preventDefault();
+  // Touch on schedule cards: hold ~0.35s without moving to pick up the card;
+  // swiping right away scrolls the timetable normally.
+  function beginLongPress(e, el, ref, opts){
+    const sx = e.clientX, sy = e.clientY;
+    let done = false;
+    const timer = setTimeout(()=>{
+      if(done) return;
+      done = true; cleanup();
+      if(navigator.vibrate) try{ navigator.vibrate(25); }catch(_){}
+      trackDrag(e, el, ref, opts, true);
+    }, 350);
+    function onMove(ev){
+      if(Math.abs(ev.clientX-sx) > 10 || Math.abs(ev.clientY-sy) > 10){
+        done = true; cleanup(); // treat as scroll
+      }
+    }
+    function onEnd(){ done = true; cleanup(); }
+    function cleanup(){
+      clearTimeout(timer);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+    }
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
+  }
+
+  function trackDrag(e, el, ref, opts, startNow){
     const startX = e.clientX, startY = e.clientY;
+    const visual = opts.visual || el;
     let started = false;
+    let everMoved = false;
     dragCtx = { ref, moved:false };
 
     function findData(){
@@ -1816,24 +1872,32 @@ const DEFAULT_STATE = {
       }
     }
 
+    function begin(x, y){
+      started = true;
+      dragCtx.moved = true;
+      closePanel();
+      const data = findData();
+      if(!data) return;
+      window.addEventListener('touchmove', blockTouchScroll, {passive:false});
+      ghostEl = document.createElement('div');
+      ghostEl.className='drag-ghost';
+      ghostEl.style.setProperty('--c', `var(--cat-${data.cat})`);
+      const dur = ref.type==='unsched' ? data.duration : (data.end-data.start);
+      ghostEl.textContent = `${data.name}（${dur}分鐘）`;
+      ghostEl.style.left = (x+14)+'px';
+      ghostEl.style.top = (y+14)+'px';
+      document.body.appendChild(ghostEl);
+      dragToast.classList.add('show');
+      visual.classList.add('dragging');
+    }
+
     function onMove(ev){
-      const dx = ev.clientX-startX, dy = ev.clientY-startY;
       if(!started){
+        const dx = ev.clientX-startX, dy = ev.clientY-startY;
         if(Math.abs(dx)<8 && Math.abs(dy)<8) return;
-        started = true;
-        dragCtx.moved = true;
-        closePanel();
-        const data = findData();
-        if(!data) return;
-        ghostEl = document.createElement('div');
-        ghostEl.className='drag-ghost';
-        ghostEl.style.setProperty('--c', `var(--cat-${data.cat})`);
-        const dur = ref.type==='unsched' ? data.duration : (data.end-data.start);
-        ghostEl.textContent = `${data.name}（${dur}分鐘）`;
-        document.body.appendChild(ghostEl);
-        dragToast.classList.add('show');
-        el.classList.add('dragging');
+        begin(ev.clientX, ev.clientY);
       }
+      if(Math.abs(ev.clientX-startX)>6 || Math.abs(ev.clientY-startY)>6) everMoved = true;
       if(ghostEl){
         ghostEl.style.left = (ev.clientX+14)+'px';
         ghostEl.style.top = (ev.clientY+14)+'px';
@@ -1845,12 +1909,13 @@ const DEFAULT_STATE = {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
+      window.removeEventListener('touchmove', blockTouchScroll);
       clearSlotHighlight();
       dragToast.classList.remove('show');
-      el.classList.remove('dragging');
+      visual.classList.remove('dragging');
       if(ghostEl){ ghostEl.remove(); ghostEl=null; }
 
-      if(started){
+      if(started && everMoved && ev.type !== 'pointercancel'){
         const data = findData();
         if(data){
           const wrapRect = scheduleWrap.getBoundingClientRect();
@@ -1866,9 +1931,10 @@ const DEFAULT_STATE = {
           }
         }
       }
-      setTimeout(()=>{ if(dragCtx) dragCtx.moved=false; }, 50);
+      setTimeout(()=>{ if(dragCtx) dragCtx.moved=false; }, 80);
     }
 
+    if(startNow) begin(startX, startY);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
