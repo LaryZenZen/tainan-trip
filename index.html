@@ -21,14 +21,15 @@
     --slot-h:56px;
     --radius:14px;
     --shadow:0 2px 10px rgba(43,36,32,.10);
-    --cat-交通:#6b7a8f;
-    --cat-餐廳:#e0813a;
-    --cat-休息:#9c9186;
-    --cat-景點:#3f9142;
-    --cat-小吃:#d4a237;
-    --cat-特產:#8a5cb0;
-    --cat-酒吧:#c0447f;
-    --cat-夜市:#1f6f6b;
+    --cat-交通:#3b6fa0;
+    --cat-餐廳:#e8720c;
+    --cat-休息:#7d7365;
+    --cat-景點:#2f9e44;
+    --cat-小吃:#e0b400;
+    --cat-特產:#8e44ad;
+    --cat-酒吧:#d6336c;
+    --cat-夜市:#0f9b8e;
+    --cat-丹丹漢堡:#a0522d;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;height:100%;}
@@ -331,6 +332,35 @@
   }
   .btn.save{ background:var(--brick); color:#fff; }
   .btn.delete{ background:var(--danger-bg); color:var(--danger); flex:0 0 48px; }
+  .btn.unschedule{ background:color-mix(in srgb, var(--canal) 14%, white); color:var(--canal); flex:0 0 74px; font-size:13px; }
+  .confirm-scrim{
+    position:absolute; inset:0; background:rgba(43,36,32,.5);
+    display:flex; align-items:center; justify-content:center;
+    z-index:80; padding:24px;
+  }
+  .confirm-box{
+    background:var(--paper); border-radius:16px; width:100%; max-width:320px;
+    padding:20px 18px 14px 18px; box-shadow:0 12px 40px rgba(0,0,0,.3);
+  }
+  .confirm-msg{
+    font-size:15px; font-weight:700; line-height:1.6;
+    white-space:pre-line; margin-bottom:16px;
+  }
+  .confirm-btns{ display:flex; gap:10px; }
+  .cat-divider{
+    display:flex; align-items:center; gap:8px;
+    margin:10px 2px 2px 2px;
+    font-size:13px; font-weight:900;
+    color:var(--c);
+  }
+  .cat-divider::before{
+    content:''; width:12px; height:12px; border-radius:4px;
+    background:var(--c); flex-shrink:0;
+  }
+  .cat-divider::after{
+    content:''; flex:1; height:2px; border-radius:1px;
+    background:color-mix(in srgb, var(--c) 35%, transparent);
+  }
   .btn.ghost{ background:var(--paper-2); color:var(--ink); }
   .overlap-flag{
     display:none;
@@ -467,6 +497,7 @@
       </div>
       <div class="sheet-footer">
         <button class="btn delete" id="btnDelete">🗑️</button>
+        <button class="btn unschedule" id="btnUnschedule" style="display:none;">↩️ 移出</button>
         <button class="btn ghost" id="btnCancel">取消</button>
         <button class="btn save" id="btnSave">儲存</button>
       </div>
@@ -485,38 +516,733 @@
   const DAY_START = 7*60;      // 07:00
   const DAY_END   = 26*60;     // 02:00 next day
   const SLOT_H = 56;
-  const CATS = ["景點","小吃","餐廳","酒吧","夜市","特產","休息","交通"];
-  const STORAGE_KEY = "tainan-itinerary-state-v1";
+  const CATS = ["景點","小吃","丹丹漢堡","餐廳","酒吧","夜市","特產","休息","交通"];
+  const STORAGE_KEY = "tainan-itinerary-state-v3";
 
   function uid(){ return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
 
-  function sampleData(){
-    return {
-      activeDay: 'sat',
-      days: {
-        sat: { label:'星期六', items: [
-          mk('出發台南','交通',540,720,'','三小時車程，記得先加滿油',''),
-          mk('牛肉爐','餐廳',720,840,'台南市','四人用餐',''),
-          mk('午休','休息',840,900,'','',''),
-          mk('漁光島','景點',960,1110,'台南市安平區漁光島','建議帶野餐墊看夕陽',''),
-        ]},
-        sun: { label:'星期日', items: [] }
-      },
-      unscheduled: [
-        mkUn('懷舊小棧杏仁豆腐冰','小吃',30,'台南市中西區','',''),
-        mkUn('安平特產採買','特產',45,'安平老街','',''),
-        mkUn('酒吧','酒吧',120,'','建議晚上前往','純酒吧／可點餐：\n訂位狀態：\n地址：\n備註：'),
-        mkUn('武聖夜市','夜市',90,'台南市中西區武聖夜市','僅週六、日營業',''),
-        mkUn('花園夜市','夜市',90,'台南市北區花園夜市','僅週四、六、日營業',''),
-        mkUn('丹丹漢堡安平店','小吃',20,'安平區','',''),
+const DEFAULT_STATE = {
+  "activeDay": "sat",
+  "days": {
+    "sat": {
+      "label": "星期六",
+      "items": [
+        {
+          "id": "id-pinned-southbound",
+          "name": "南下台南",
+          "cat": "交通",
+          "start": 540,
+          "end": 720,
+          "location": "台中市南屯區",
+          "note": "穎穎出發接人",
+          "detail": "",
+          "pinned": true
+        }
       ]
-    };
+    },
+    "sun": {
+      "label": "星期日",
+      "items": []
+    }
+  },
+  "unscheduled": [
+    {
+      "id": "id-mr6blurf-t011vv",
+      "name": "籠裏 Bar Lonely",
+      "cat": "酒吧",
+      "duration": 90,
+      "location": "臺南市中西區南美里民生路一段157巷11號1樓",
+      "note": "還可訂位",
+      "detail": "https://inline.app/booking/-MTyVecWkryRic5l11m2:inline-live-2/-MTyVenoPrGrXMhddIQY?language=zh-tw"
+    },
+    {
+      "id": "id-mr6bml1f-1bhvvt",
+      "name": "Bar TCRC 前科累累俱樂部",
+      "cat": "酒吧",
+      "duration": 90,
+      "location": "台南市中西區新美街117號",
+      "note": "很難訂",
+      "detail": "https://inline.app/booking/-MBhmifjhvmPrQTt8LoP:inline-live-1?language=zh-tw"
+    },
+    {
+      "id": "id-mr6bnjzl-kzgiu0",
+      "name": "Phowa頗瓦",
+      "cat": "酒吧",
+      "duration": 90,
+      "location": "臺南市中西區新美街121號",
+      "note": "https://inline.app/booking/-MwVy0kx2S8tAbizeTI3:inline-live-2/-MwVy0wm5IlftvLVRGxx?language=zh-tw",
+      "detail": "很難訂"
+    },
+    {
+      "id": "id-mr6bo7o3-qtjr45",
+      "name": "BarHome",
+      "cat": "酒吧",
+      "duration": 90,
+      "location": "台南市中西區中山路23巷1號",
+      "note": "https://inline.app/booking/-Lth3ZZkOTMw4uVQJr4T:inline-live-1?language=zh-tw",
+      "detail": "還能訂"
+    },
+    {
+      "id": "id-mr6bpd74-pdenn7",
+      "name": "The Han-Jia Pairing Dinner",
+      "cat": "酒吧",
+      "duration": 90,
+      "location": "臺南市南區新昌里西門路一段669號",
+      "note": "https://inline.app/booking/-NHUlYMQ75StqfwJrSH2:inline-live-3/-NHUlYZa_TiAQSrkFx_s?language=zh-tw",
+      "detail": "還能訂"
+    },
+    {
+      "id": "id-mr6br457-x9ny6i",
+      "name": "漁光島",
+      "cat": "景點",
+      "duration": 150,
+      "location": "台南市安平區漁光島",
+      "note": "建議帶野餐墊看夕陽",
+      "detail": ""
+    },
+    {
+      "id": "id-mr6bsdki-ao6nef",
+      "name": "奇美博物館",
+      "cat": "景點",
+      "duration": 120,
+      "location": "臺南市仁德區成功里文華路二段66號",
+      "note": "法老",
+      "detail": "需要買票\nhttps://inline.app/booking/-MPmUAqxXSf3n8STH2G_:inline-live-2/-MPmUB-GBHJgLJ3i6daK?language=zh-tw"
+    },
+    {
+      "id": "id-mr6byfgr-6r5z05",
+      "name": "牛肉鍋-溫體牛肉火鍋",
+      "cat": "餐廳",
+      "duration": 120,
+      "location": "台南市中西區中正路140號",
+      "note": "可線上訂位",
+      "detail": "https://inline.app/booking/-MPmUAqxXSf3n8STH2G_:inline-live-2/-MPmUB-GBHJgLJ3i6daK?language=zh-tw"
+    },
+    {
+      "id": "id-mr6c34zj-2kur2e",
+      "name": "牛肉爐-劉家莊牛肉爐",
+      "cat": "餐廳",
+      "duration": 120,
+      "location": "臺南市永康區正強里四維街21號",
+      "note": "電話訂位",
+      "detail": "06 233 5757"
+    },
+    {
+      "id": "id-mr6c4nnb-xofp6s",
+      "name": "澪三酒食",
+      "cat": "餐廳",
+      "duration": 60,
+      "location": "台南市東區崇明路115號",
+      "note": "",
+      "detail": "居酒屋、燒烤、壽司、酒餚、小料理\n18:00-00:30，週一公休；23:00 最後點餐"
+    },
+    {
+      "id": "id-mr6c5kzp-tf3pbv",
+      "name": "好曬餐飲部",
+      "cat": "餐廳",
+      "duration": 60,
+      "location": "台南市中西區友愛街54號",
+      "note": "早午餐、輕食、義大利麵、薄餅",
+      "detail": "10:00-15:30"
+    },
+    {
+      "id": "id-mr6c6jcg-scgipq",
+      "name": "朝屋台南",
+      "cat": "餐廳",
+      "duration": 60,
+      "location": "台南市東區東平路39號",
+      "note": "日式家庭料理、咖哩、定食",
+      "detail": "iChef 顯示週一休，二至六多為 11:30-13:50、17:00-19:30；部分來源寫到 20:30\n只能訂三天內\nhttps://shop.ichefpos.com/store/ZByGdtzn/reserve"
+    },
+    {
+      "id": "id-mr6c7i3k-3nljll",
+      "name": "小北商場-秀萱 蝦仁炒飯＆鮮魚湯",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市北區西門路四段101號，小北商場",
+      "note": "炒飯、魚湯、肉燥飯、小吃",
+      "detail": "09:00-21:00"
+    },
+    {
+      "id": "id-mr6c8fjq-mxh9aw",
+      "name": "小北商場-阿松養生果汁冰品",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市北區西門路四段101號，小北觀光夜市",
+      "note": "冰品、果汁、芒果冰、草莓冰",
+      "detail": "12:00-21:00；來源有週三休、也有週三四休"
+    },
+    {
+      "id": "id-mr6c9wxk-fekvua",
+      "name": "武聖夜市",
+      "cat": "夜市",
+      "duration": 90,
+      "location": "臺南市中西區光賢里武聖路69巷",
+      "note": "僅週六、日營業",
+      "detail": ""
+    },
+    {
+      "id": "id-mr6c9ybr-rzmtqm",
+      "name": "花園夜市",
+      "cat": "夜市",
+      "duration": 90,
+      "location": "南市北區成德里海安路三段533號",
+      "note": "僅週四、六、日營業",
+      "detail": "玩樂為主，18:30後很多人"
+    },
+    {
+      "id": "id-mr6cd8r4-a2mrzb",
+      "name": "小北商場-阿和鍋燒意麵 / 阿和小炒",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市北區西門路四段101號，小北觀光夜市 A23",
+      "note": "鍋燒意麵、海產粥、炒飯、熱炒",
+      "detail": "每日 11:00-21:00，週一公休"
+    },
+    {
+      "id": "id-mr6cdstz-fcrbak",
+      "name": "Oh-o米糕",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市東區東寧路300號",
+      "note": "米糕、湯品、文青小吃",
+      "detail": "週二至四 11:30-14:30；週五六 11:30-14:30、17:00-19:30；週一休"
+    },
+    {
+      "id": "id-mr6cez1q-qqgfct",
+      "name": "金桃家草莓大福",
+      "cat": "特產",
+      "duration": 60,
+      "location": "台南市永康區民族路536號",
+      "note": "草莓大福、水果大福、伴手禮甜點",
+      "detail": "官網本店 11:00-18:00；現貨販售可能另依 FB 公告\n另有多門市"
+    },
+    {
+      "id": "id-mr6cflia-9ef4e4",
+      "name": "白寶奶奶雜貨店",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市北區大武街599號",
+      "note": "復古雜貨、奶昔、菠蘿油、甜點、拍照店",
+      "detail": "平日 14:00-19:30，假日 13:00-19:30，週三四公休\n不是單純餐廳，比較像甜點＋拍照點；別跟民族路「白寶奶奶港式菠蘿包」混淆"
+    },
+    {
+      "id": "id-mr6cgm8v-w5r5ch",
+      "name": "尋路。甜",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市北區東豐路89號",
+      "note": "造型甜點、甜點工作室",
+      "detail": "近期 IG 偏工作室 / 預訂制；舊資料為 13:30-19:00，依每月公告\n不一定能現場內用，適合當「若有開再去」名單"
+    },
+    {
+      "id": "id-mr6ch7ws-hptr43",
+      "name": "豆弄とろ",
+      "cat": "餐廳",
+      "duration": 60,
+      "location": "台南市中西區五妃街76號1樓",
+      "note": "日式昭和風早午餐、咖哩、甜點、咖啡",
+      "detail": "IG：平日 09:30-17:00，週末 09:30-18:00"
+    },
+    {
+      "id": "id-mr6cx0z1-aktqcp",
+      "name": "肚吉貳貳",
+      "cat": "餐廳",
+      "duration": 60,
+      "location": "台南市東區裕信路10號",
+      "note": "早餐、早午餐、三明治、披薩、飲品",
+      "detail": "09:00-15:30，最後點餐約14:30；週二三公休，店休看 IG 置頂\n不可訂位、現場候位，適合排早午餐但不要太晚去"
+    },
+    {
+      "id": "id-mr6cxmw4-9d93hc",
+      "name": "Ubuntu 烏邦圖書店_環河店",
+      "cat": "景點",
+      "duration": 60,
+      "location": "台南市中西區環河街129巷27號2樓",
+      "note": "書店、咖啡、河景拍照點",
+      "detail": "IG 顯示 09:00-21:00，週二公休；舊食記寫週五六較晚"
+    },
+    {
+      "id": "id-mr6cy7hz-rmrp0t",
+      "name": "衛屋茶事 Sputnik Lab",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市北區富北街74號",
+      "note": "日式茶屋、抹茶、和菓子、下午茶",
+      "detail": "12:00-19:00，週三公休\n屬於安靜拍照型甜點，建議訂位或先查 IG"
+    },
+    {
+      "id": "id-mr6cyzcb-xprpt5",
+      "name": "延平市場  早上去",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市北區公園路一帶，公園路862巷附近",
+      "note": "傳統市場、小吃集合區",
+      "detail": "早市為主，各攤不同；部分攤位約早上至中午\n不是單店，適合早上吃市場小吃；如果下午才去，攤位選擇會少很多"
+    },
+    {
+      "id": "id-mr6cznsf-kix4kj",
+      "name": "兔子高帽 雞蛋焼き",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "國華西市場 / 西市場南區美食街",
+      "note": "雞蛋燒、甜點、咖啡",
+      "detail": "國華西市場店 IG 顯示 13:30-18:00，週二三休\nIG 熱門甜點，適合跟國華街、西市場、林家白糖粿串一起"
+    },
+    {
+      "id": "id-mr6d09ch-p35pdu",
+      "name": "IZUMINAMI 泉波",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區永福路二段47號",
+      "note": "冰淇淋、茶味冰品、拍照甜點",
+      "detail": "食記：13:00-18:00，週二三公休；IG食記有週末延長版本"
+    },
+    {
+      "id": "id-mr6d0typ-g5obc3",
+      "name": "蜷尾家 甘味処",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區正興街92號",
+      "note": "霜淇淋、散步甜食",
+      "detail": "IG 顯示週一至日 11:00-20:00，週四至18:00，售完為止\n老牌熱門冰品；正興街/國華街區可順路，但熱門時段會排隊"
+    },
+    {
+      "id": "id-mr6d1f0f-zw0ejf",
+      "name": "林家白糖粿 / 林家茂子蕃薯椪白糖粿",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區尊王路6號",
+      "note": "白糖粿、蕃薯椪、傳統炸甜點",
+      "detail": "IG：10:30-18:30；休假看 Google / IG\n原國華街相關舊址資訊很多，目前建議以尊王路6號為準；適合跟西市場、國華街串"
+    },
+    {
+      "id": "id-mr6d2atd-s2relz",
+      "name": "萬客樓",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市東區東寧路371號",
+      "note": "中式麵食、湯包、捲餅、鍋貼、餡餅",
+      "detail": "11:00-22:00，無固定公休資料\n截圖顯示 Google 4.0 / 4,939 則；正餐穩定型，適合四人吃午晚餐"
+    },
+    {
+      "id": "id-mr6d2v52-imw4m5",
+      "name": "上海好味道小籠湯包",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市東區東安路26號",
+      "note": "小籠湯包、中式包點、麵食、小菜",
+      "detail": "10:30-22:00\n截圖顯示 Google 4.0 / 8,875 則；評論量大、營業時間長，適合當東區備案正餐"
+    },
+    {
+      "id": "id-mr6dg28k-np9h2o",
+      "name": "王氏魚皮",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市安平區安平路612號",
+      "note": "虱目魚魚皮湯、魚肚、鹹粥",
+      "detail": "週一至週五 04:00–14:00；週六日 04:00–15:00\n很適合早餐或早午餐，越早越穩"
+    },
+    {
+      "id": "id-mr6dgf63-kwwf9d",
+      "name": "文章牛肉湯 安平總店",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市安平區安平路300號",
+      "note": "溫體牛肉湯、牛肉料理",
+      "detail": "約 10:30–02:00；週一 14:00 至週二 10:30 公休/備料\n午餐、晚餐、宵夜都可安排"
+    },
+    {
+      "id": "id-mr6dgt2d-r2ww13",
+      "name": "周氏蝦捲 台南總店",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市安平區安平路408-1號",
+      "note": "蝦捲、台南小吃",
+      "detail": "約 10:00–21:00\n觀光客多，但時間穩、好安排"
+    },
+    {
+      "id": "id-mr6dhwir-0tw3jx",
+      "name": "陳家蚵捲",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市安平區安平路786號",
+      "note": "蚵捲、蚵仔煎、烤鮮蚵",
+      "detail": "約 10:00–21:00\n適合午餐後或下午小吃"
+    },
+    {
+      "id": "id-mr6dicy8-uy9lta",
+      "name": "歐家蚵仔煎",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市安平區延平街160號",
+      "note": "蚵仔煎、安平老店",
+      "detail": "週一二三五 10:00–18:00；週六日 10:00–19:00；週四休"
+    },
+    {
+      "id": "id-mr6diusl-eakhg4",
+      "name": "安平貴記美食文化館",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市安平區延平街93號",
+      "note": "蚵仔煎、蝦捲、芋粿、肉燥飯",
+      "detail": "平日約 11:00–14:00；週六日約 11:00–19:00\n平日時間較短，假日比較適合安排"
+    },
+    {
+      "id": "id-mr6dj7ye-qrr9pi",
+      "name": "劉記韭菜盒子",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市安平區安北路159號",
+      "note": "韭菜盒、烙餅",
+      "detail": "約 14:30–18:30；可能不定休/售完提早收\n下午限定，想吃要排進 14:30 後"
+    },
+    {
+      "id": "id-mr6djlld-7jsox5",
+      "name": "同記安平豆花 安平總店",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市安平區安北路433號",
+      "note": "豆花、粉圓冰、雪花冰",
+      "detail": "約 09:00–23:00\n時間最彈性，飯後甜點很適合"
+    },
+    {
+      "id": "id-mr6dkelm-g5rvt5",
+      "name": "林義豐冬瓜茶",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市安平區安平路764號",
+      "note": "冬瓜茶、冬瓜鮮奶",
+      "detail": "平日約 10:30–18:00；週六日約 10:30–19:00\n安平老街附近，邊走邊喝很方便"
+    },
+    {
+      "id": "id-mr6dl3y3-xelw4g",
+      "name": "安平冰城",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市安平區安平路698號",
+      "note": "綠豆沙、雪淇冰、古早味冰",
+      "detail": "約 10:00–19:00\n適合下午，部分資料顯示週二可能休，出發前再確認"
+    },
+    {
+      "id": "id-mr6dnu08-urqbh6",
+      "name": "熱富安平伴手禮",
+      "cat": "特產",
+      "duration": 60,
+      "location": "台南市安平區安平路133號",
+      "note": "蝦餅 / 牛舌餅",
+      "detail": "油炸 / 非油炸蝦餅、牛舌餅、古早味餅\n約 08:00–22:00\n開得早也收得晚，伴手禮很好排"
+    },
+    {
+      "id": "id-mr6dolsc-1wt9wt",
+      "name": "得意蝦餅",
+      "cat": "特產",
+      "duration": 60,
+      "location": "台南市安平區安平路123號",
+      "note": "蝦餅",
+      "detail": "蝦餅禮盒、油炸 / 非油炸口味\n平日約 10:00–19:00；週六日約 10:00–20:00\n跟熱富距離近，可以一起比較"
+    },
+    {
+      "id": "id-mr6dpyxh-u3935b",
+      "name": "億載安平鮮蝦餅",
+      "cat": "特產",
+      "duration": 60,
+      "location": "台南市安平區延平街52號",
+      "note": "傳統蝦餅",
+      "detail": "傳統蝦餅\n約 10:00–19:00\n原表「傳載」應為「億載」"
+    },
+    {
+      "id": "id-mr6dqnxo-61j4g4",
+      "name": "順利餅舖 安平店",
+      "cat": "特產",
+      "duration": 60,
+      "location": "台南市安平區安平路578號",
+      "note": "牛舌餅 / 椪餅",
+      "detail": "牛舌餅、椪餅、手工禮盒\n週日至週五約 09:00–22:00；週六約 09:00–19:00\n營業時間長，適合最後補買"
+    },
+    {
+      "id": "id-mr6drja7-4st15u",
+      "name": "林永泰興蜜餞行",
+      "cat": "特產",
+      "duration": 60,
+      "location": "台南市安平區延平街84號(延平老店)",
+      "note": "蜜餞 / 芒果乾",
+      "detail": "安平運河店：台南市安平區安平路542號\n大片芒果乾、紅芒果乾、情人果、梅類蜜餞\n延平店約 11:30–19:00，週二三休；安平路店約 11:30–18:00，週一四休\n有兩間店，休假日不同，導航前先看分店"
+    },
+    {
+      "id": "id-mr6dwara-5ujws8",
+      "name": "國華街／永樂市場 富盛號碗粿",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區民族路三段11號",
+      "note": "碗粿、魚羹",
+      "detail": "約 07:00-16:30 或 17:00，週四休，售完為止\n早上～中午\n國華街第一梯隊"
+    },
+    {
+      "id": "id-mr6dwoeb-74vba3",
+      "name": "國華街／永樂市場 一味品碗粿魚羹",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區國華街三段177-179號，永樂市場111、112攤",
+      "note": "碗粿、魚羹",
+      "detail": "約 05:00-17:00，週二休\n早餐～中午\n富盛號替代或比較組"
+    },
+    {
+      "id": "id-mr6dx49o-ksus4y",
+      "name": "國華街／永樂市場 阿松割包",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區國華街三段181號",
+      "note": "割包",
+      "detail": "約 08:00-15:30，週三、四休；部分來源寫到18:00，建議早去\n早上～中午\n跟富盛號、金得春捲很順"
+    },
+    {
+      "id": "id-mr6dxkb3-i5wo25",
+      "name": "國華街／永樂市場 金得春捲",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區民族路三段19號",
+      "note": "春捲",
+      "detail": "約 07:00-17:00，週二休\n早上～下午前段\n適合四人分食"
+    },
+    {
+      "id": "id-mr6dxxor-4fblq3",
+      "name": "國華街／永樂市場 邱家小卷米粉",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區國華街三段251號",
+      "note": "小卷米粉",
+      "detail": "約 11:00-17:00，週一休\n中午～下午\n經典，但若避開麵類可跳"
+    },
+    {
+      "id": "id-mr6dyefw-o9wygo",
+      "name": "國華街／永樂市場 八寶彬圓仔惠",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區國華街二段99號",
+      "note": "剉冰、甜湯",
+      "detail": "約 09:00-22:00，常見版本為週一休\n上午～晚上\n國華街甜點首選"
+    },
+    {
+      "id": "id-mr6dysuc-8mled8",
+      "name": "國華街／水仙宮 修安扁擔豆花",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區國華街三段157號",
+      "note": "豆花、粉粿",
+      "detail": "約 08:00-21:30\n上午～下午\n甜點備選"
+    },
+    {
+      "id": "id-mr6dz5cq-xr3yvx",
+      "name": "國華街／西門淺草 江水號",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區國華街三段27號，西門淺草市場B12附近",
+      "note": "古早味冰",
+      "detail": "約 12:00-20:40\n中午～下午\n甜點備選"
+    },
+    {
+      "id": "id-mr6dzubd-affrn7",
+      "name": "國華街／水仙宮 水仙宮青草茶",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區國華街三段183號",
+      "note": "青草茶、仙草茶",
+      "detail": "約 09:00-20:30；部分資料寫 07:00-20:00\n早上～下午\n邊走邊喝、解膩"
+    },
+    {
+      "id": "id-mr6e0v8v-weef22",
+      "name": "國華街／永樂市場 永樂燒肉飯",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區民族路三段16號",
+      "note": "燒肉飯",
+      "detail": "約 10:00-21:00，週三休\n中午～晚上\n國華街正餐備案"
+    },
+    {
+      "id": "id-mr6e2o98-j6ioke",
+      "name": "五妃街 懷舊小棧杏仁豆腐冰",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區五妃街206號",
+      "note": "杏仁豆腐冰",
+      "detail": "約 10:30-22:00；假日可能到21:00\n中午後～晚上\n你們同行必去，排甜點站"
+    },
+    {
+      "id": "id-mr6e36j2-nitmmt",
+      "name": "慶中街郭家綠豆湯",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區慶中街16號",
+      "note": "綠豆湯",
+      "detail": "約 10:00-19:30，週一休\n上午～下午\n懷舊小棧附近甜湯備選"
+    },
+    {
+      "id": "id-mr6e3om3-t91s32",
+      "name": "慶中街豬血湯",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區慶中街24號",
+      "note": "豬血湯",
+      "detail": "約 09:30-18:30，週一、週六休\n早上～下午\n鹹食小點"
+    },
+    {
+      "id": "id-mr6e493i-5aie2s",
+      "name": "慶中街 伊莉的店",
+      "cat": "餐廳",
+      "duration": 60,
+      "location": "台南市中西區慶中街108號",
+      "note": "早午餐",
+      "detail": "約 07:30-14:30，週一、二休\n早上～中午\n偏早午餐，不是傳統小吃"
+    },
+    {
+      "id": "id-mr6e4vub-gn4a69",
+      "name": "府前路 福記肉圓",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區府前路一段215號",
+      "note": "清蒸肉圓",
+      "detail": "約 06:00-18:30；部分來源寫 06:30-18:00\n早上～下午\n懷舊小棧前後都能接"
+    },
+    {
+      "id": "id-mr6e59v7-n100pi",
+      "name": "府前路 克林台包",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區府前路一段218號",
+      "note": "包子、八寶肉包",
+      "detail": "約 09:00-19:30\n早上～傍晚\n可外帶、時間彈性"
+    },
+    {
+      "id": "id-mr6e5nz9-l861nz",
+      "name": "府前路 莉莉水果店",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區府前路一段199號",
+      "note": "水果冰、果汁",
+      "detail": "約 11:00-22:00，週一休\n中午～晚上\n跟懷舊小棧同屬甜點，擇一較好"
+    },
+    {
+      "id": "id-mr6e67ix-9cwi67",
+      "name": "孔廟／府中街 台灣 2 元黑輪",
+      "cat": "景點",
+      "duration": 60,
+      "location": "台南市中西區開山路74號",
+      "note": "黑輪、關東煮",
+      "detail": "約 10:00-18:30；週二、三休，週日可能較早開\n上午～下午\n孔廟散步小點"
+    },
+    {
+      "id": "id-mr6e6q3n-wduhpv",
+      "name": "保安路 阿龍香腸熟肉",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區保安路34號",
+      "note": "香腸熟肉、黑白切",
+      "detail": "約 10:30-19:00，週一休\n中午～晚餐前\n可當下午鹹食"
+    },
+    {
+      "id": "id-mr6e71v1-frn0gz",
+      "name": "安路 阿鳳浮水虱目魚羹",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區保安路59號",
+      "note": "虱目魚羹",
+      "detail": "約 07:00-24:00\n早上～晚上\n時段最好用"
+    },
+    {
+      "id": "id-mr6e7gao-kczd0k",
+      "name": "保安路 阿明豬心冬粉",
+      "cat": "小吃",
+      "duration": 30,
+      "location": "台南市中西區保安路72號",
+      "note": "豬心湯、內臟湯",
+      "detail": "約 17:00-24:00，常見版本為週一休\t晚餐～宵夜\t晚上線，不適合早上"
+    },
+    {
+      "id": "id-dandan-1",
+      "name": "吃丹丹漢堡",
+      "cat": "丹丹漢堡",
+      "duration": 60,
+      "location": "台南市北區成功路380號",
+      "note": "吃就對了",
+      "detail": "吃  就  對  了"
+    },
+    {
+      "id": "id-dandan-2",
+      "name": "吃丹丹漢堡",
+      "cat": "丹丹漢堡",
+      "duration": 60,
+      "location": "台南市安平區平豐路389號",
+      "note": "吃就對了",
+      "detail": "吃  就  對  了"
+    },
+    {
+      "id": "id-dandan-3",
+      "name": "吃丹丹漢堡",
+      "cat": "丹丹漢堡",
+      "duration": 60,
+      "location": "台南市東區崇德路629號",
+      "note": "吃就對了",
+      "detail": "吃  就  對  了"
+    },
+    {
+      "id": "id-dandan-4",
+      "name": "吃丹丹漢堡",
+      "cat": "丹丹漢堡",
+      "duration": 60,
+      "location": "台南市永康區民族路271號",
+      "note": "吃就對了",
+      "detail": "吃  就  對  了"
+    },
+    {
+      "id": "id-dandan-5",
+      "name": "吃丹丹漢堡",
+      "cat": "丹丹漢堡",
+      "duration": 60,
+      "location": "台南市安南區海佃路一段215號",
+      "note": "吃就對了",
+      "detail": "吃  就  對  了"
+    }
+  ]
+};
+
+  function sampleData(){
+    return JSON.parse(JSON.stringify(DEFAULT_STATE));
   }
   function mk(name,cat,start,end,loc,note,detail){
     return { id:uid(), name, cat, start, end, location:loc||'', note:note||'', detail:detail||'' };
   }
   function mkUn(name,cat,duration,loc,note,detail){
     return { id:uid(), name, cat, duration, location:loc||'', note:note||'', detail:detail||'' };
+  }
+  const TAINAN_DISTRICTS = ["中西區","東區","南區","北區","安平區","安南區","永康區","歸仁區","新化區","左鎮區","玉井區","楠西區","南化區","仁德區","關廟區","龍崎區","官田區","麻豆區","佳里區","西港區","七股區","將軍區","學甲區","北門區","新營區","後壁區","白河區","東山區","六甲區","下營區","柳營區","鹽水區","善化區","大內區","山上區","新市區","安定區"];
+  function extractDistrict(loc){
+    if(!loc) return null;
+    // require a 台南市/臺南市/南市 prefix so street names like「西市場南區」don't false-match
+    const m = loc.match(/[台臺]?南市([\u4e00-\u9fa5]{1,3}區)/);
+    if(m && TAINAN_DISTRICTS.includes(m[1])) return m[1];
+    return null;
+  }
+  // Sort unscheduled list: group by category (fixed order), then within each
+  // category cluster items that share the same district (區); items with no
+  // detected district are pushed to the end of their category group.
+  function sortedUnscheduled(list){
+    const byCat = {};
+    list.forEach(it=>{ (byCat[it.cat] = byCat[it.cat]||[]).push(it); });
+    const result = [];
+    CATS.forEach(cat=>{
+      const items = byCat[cat];
+      if(!items) return;
+      const groups = {}; const order = []; const noDistrict = [];
+      items.forEach(it=>{
+        const d = extractDistrict(it.location);
+        if(d){ if(!groups[d]){ groups[d]=[]; order.push(d); } groups[d].push(it); }
+        else { noDistrict.push(it); }
+      });
+      order.forEach(d=> result.push(...groups[d]));
+      result.push(...noDistrict);
+    });
+    return result;
   }
 
   let state = null;
@@ -641,7 +1367,7 @@
       card.dataset.id = it.id;
       card.innerHTML = `
         ${overlapIds.has(it.id)?'<div class="warn-icon">⚠️</div>':''}
-        <div class="time">${fmt(it.start)}–${fmt(it.end)}</div>
+        <div class="time">${it.pinned?'📌 ':''}${fmt(it.start)}–${fmt(it.end)}</div>
         <div class="name">${escapeHtml(it.name)}</div>
         <div class="meta">${escapeHtml(it.location||it.note||'')}</div>
       `;
@@ -660,16 +1386,27 @@
       list.innerHTML = '<div class="empty-note">目前沒有待排行程 🎉</div>';
       return;
     }
-    state.unscheduled.forEach(it=>{
+    const sorted = sortedUnscheduled(state.unscheduled);
+    let lastCat = null;
+    sorted.forEach(it=>{
+      if(it.cat !== lastCat){
+        lastCat = it.cat;
+        const header = document.createElement('div');
+        header.className = 'cat-divider';
+        header.style.setProperty('--c', `var(--cat-${it.cat})`);
+        header.textContent = it.cat;
+        list.appendChild(header);
+      }
       const card = document.createElement('div');
       card.className = 'unsched-card';
       card.style.setProperty('--c', `var(--cat-${it.cat})`);
       card.dataset.id = it.id;
+      const district = extractDistrict(it.location);
       card.innerHTML = `
         <div class="drag-handle">⠿</div>
         <div class="info">
           <div class="name">${escapeHtml(it.name)}</div>
-          <div class="meta">${it.cat} ・ ${it.duration}分鐘${it.location?(' ・ '+escapeHtml(it.location)):''}</div>
+          <div class="meta">${district?('📍'+district+' ・ '):''}${it.duration}分鐘${it.location?(' ・ '+escapeHtml(it.location)):''}</div>
         </div>
         <button class="add-btn">加入</button>
       `;
@@ -713,6 +1450,7 @@
   const f_detail = document.getElementById('f_detail');
   const f_overlapFlag = document.getElementById('f_overlapFlag');
   const btnDelete = document.getElementById('btnDelete');
+  const btnUnschedule = document.getElementById('btnUnschedule');
 
   CATS.forEach(c=>{
     const chip = document.createElement('div');
@@ -794,6 +1532,7 @@
     f_note.value = data.note||'';
     f_detail.value = data.detail||'';
     btnDelete.style.display = 'flex';
+    btnUnschedule.style.display = (mode==='sched') ? 'flex' : 'none';
     refreshTimeVisibility();
     checkOverlapPreview();
     modalScrim.classList.add('show');
@@ -809,6 +1548,7 @@
     f_duration.value='60';
     f_location.value=''; f_note.value=''; f_detail.value='';
     btnDelete.style.display='none';
+    btnUnschedule.style.display='none';
     refreshTimeVisibility();
     f_overlapFlag.classList.remove('show');
     modalScrim.classList.add('show');
@@ -828,6 +1568,7 @@
     f_note.value = unschedItem.note||'';
     f_detail.value = unschedItem.detail||'';
     btnDelete.style.display='flex';
+    btnUnschedule.style.display='none';
     refreshTimeVisibility();
     checkOverlapPreview();
     modalScrim.classList.add('show');
@@ -907,18 +1648,47 @@
     showToast('已儲存');
   });
 
-  btnDelete.addEventListener('click', ()=>{
+  btnDelete.addEventListener('click', async ()=>{
     if(!editCtx || !editCtx.id) return;
-    if(!confirm('確定要刪除這個行程嗎？')) { return; }
-    if(editCtx.mode==='sched'){
-      ['sat','sun'].forEach(d=>{ state.days[d].items = state.days[d].items.filter(x=>x.id!==editCtx.id); });
-    } else if(editCtx.mode==='unsched'){
-      state.unscheduled = state.unscheduled.filter(x=>x.id!==editCtx.id);
+    const ctx = { mode: editCtx.mode, id: editCtx.id };
+    const ok = await appConfirm('確定要「永久刪除」這個行程嗎？\n（如果只是想移回待排清單，請按「↩️ 移出」）');
+    if(!ok) return;
+    if(ctx.mode==='sched'){
+      ['sat','sun'].forEach(d=>{ state.days[d].items = state.days[d].items.filter(x=>x.id!==ctx.id); });
+    } else if(ctx.mode==='unsched'){
+      state.unscheduled = state.unscheduled.filter(x=>x.id!==ctx.id);
     }
     saveState();
     renderAll();
     closeModal();
     showToast('已刪除');
+  });
+
+  btnUnschedule.addEventListener('click', ()=>{
+    if(!editCtx || editCtx.mode!=='sched' || !editCtx.id) return;
+    let found=null;
+    ['sat','sun'].forEach(d=>{
+      const idx = state.days[d].items.findIndex(x=>x.id===editCtx.id);
+      if(idx>-1){
+        found = state.days[d].items[idx];
+        state.days[d].items.splice(idx,1);
+      }
+    });
+    if(found){
+      state.unscheduled.push({
+        id: found.id,
+        name: found.name,
+        cat: found.cat,
+        duration: Math.max(30, found.end - found.start),
+        location: found.location||'',
+        note: found.note||'',
+        detail: found.detail||''
+      });
+      saveState();
+      renderAll();
+      closeModal();
+      showToast('已移回待排行程清單');
+    }
   });
 
   function attachCardOpen(card, item, mode){
@@ -959,11 +1729,11 @@
     const file = e.target.files[0];
     if(!file) return;
     const reader = new FileReader();
-    reader.onload = ()=>{
+    reader.onload = async ()=>{
       try{
         const data = JSON.parse(reader.result);
         if(!data.days || !data.unscheduled) throw new Error('格式不符');
-        if(confirm('匯入將覆蓋目前所有行程資料，確定嗎？')){
+        if(await appConfirm('匯入將覆蓋目前所有行程資料，確定嗎？')){
           state = data;
           if(!state.activeDay) state.activeDay='sat';
           saveState();
@@ -971,19 +1741,20 @@
           showToast('匯入成功');
         }
       }catch(err){
-        alert('匯入失敗：檔案格式錯誤');
+        showToast('匯入失敗：檔案格式錯誤');
       }
     };
     reader.readAsText(file);
     importInput.value='';
   });
 
-  document.getElementById('btnReset').addEventListener('click', ()=>{
-    if(confirm('確定要重置為範例資料嗎？目前的編輯將會遺失。')){
-      state = sampleData();
+  document.getElementById('btnReset').addEventListener('click', async ()=>{
+    if(await appConfirm('確定要清空「時間表」上已排入的行程嗎？\n（📌 固定行程與待排行程清單不受影響）')){
+      state.days.sat.items = state.days.sat.items.filter(x=>x.pinned);
+      state.days.sun.items = state.days.sun.items.filter(x=>x.pinned);
       saveState();
       renderAll();
-      showToast('已重置範例資料');
+      showToast('時間表已重置（固定行程與待排清單保留）');
     }
   });
 
@@ -995,6 +1766,28 @@
     t.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  /* ============ custom confirm (native confirm() is blocked in sandboxed previews) ============ */
+  function appConfirm(msg){
+    return new Promise(resolve=>{
+      const scrim = document.createElement('div');
+      scrim.className = 'confirm-scrim';
+      scrim.innerHTML = `
+        <div class="confirm-box">
+          <div class="confirm-msg"></div>
+          <div class="confirm-btns">
+            <button class="btn ghost">取消</button>
+            <button class="btn save">確定</button>
+          </div>
+        </div>`;
+      scrim.querySelector('.confirm-msg').textContent = msg;
+      const btns = scrim.querySelectorAll('button');
+      btns[0].addEventListener('click', ()=>{ scrim.remove(); resolve(false); });
+      btns[1].addEventListener('click', ()=>{ scrim.remove(); resolve(true); });
+      scrim.addEventListener('click', (e)=>{ if(e.target===scrim){ scrim.remove(); resolve(false); } });
+      document.getElementById('app').appendChild(scrim);
+    });
   }
 
   /* ============ drag (pointer events, unifies mouse + touch) ============ */
