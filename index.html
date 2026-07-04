@@ -530,7 +530,7 @@
   const DAY_END   = 26*60;     // 02:00 next day
   const SLOT_H = 56;
   const CATS = ["景點","小吃","丹丹漢堡","餐廳","酒吧","夜市","特產","休息","交通"];
-  const STORAGE_KEY = "tainan-itinerary-state-v3";
+  const STORAGE_KEY = "tainan-itinerary-state-v4";
 
   function uid(){ return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
 
@@ -1138,8 +1138,8 @@ const DEFAULT_STATE = {
     {
       "id": "id-mr6e67ix-9cwi67",
       "name": "孔廟／府中街 台灣 2 元黑輪",
-      "cat": "小吃",
-      "duration": 30,
+      "cat": "景點",
+      "duration": 60,
       "location": "台南市中西區開山路74號",
       "note": "黑輪、關東煮",
       "detail": "約 10:00-18:30；週二、三休，週日可能較早開\n上午～下午\n孔廟散步小點"
@@ -1768,12 +1768,26 @@ const DEFAULT_STATE = {
   });
 
   document.getElementById('btnReset').addEventListener('click', async ()=>{
-    if(await appConfirm('確定要清空「時間表」上已排入的行程嗎？\n（📌 固定行程與待排行程清單不受影響）')){
-      state.days.sat.items = state.days.sat.items.filter(x=>x.pinned);
-      state.days.sun.items = state.days.sun.items.filter(x=>x.pinned);
+    if(await appConfirm('確定要清空「時間表」上已排入的行程嗎？\n（行程會移回待排清單；📌 固定行程不受影響）')){
+      let moved = 0;
+      ['sat','sun'].forEach(d=>{
+        const keep = [];
+        state.days[d].items.forEach(it=>{
+          if(it.pinned){ keep.push(it); }
+          else {
+            state.unscheduled.push({
+              id: it.id, name: it.name, cat: it.cat,
+              duration: Math.max(30, it.end - it.start),
+              location: it.location||'', note: it.note||'', detail: it.detail||''
+            });
+            moved++;
+          }
+        });
+        state.days[d].items = keep;
+      });
       saveState();
       renderAll();
-      showToast('時間表已重置（固定行程與待排清單保留）');
+      showToast(moved>0 ? `已將 ${moved} 個行程移回待排清單` : '時間表已重置');
     }
   });
 
