@@ -525,7 +525,8 @@
   "use strict";
 
   /* ============ constants ============ */
-  const SLOT_MIN = 30;
+  const SLOT_MIN = 30;         // 時間軸格線仍以 30 分鐘一格顯示
+  const STEP = 10;             // 行程時間的最小單位（吸附／最短長度）
   const DAY_START = 7*60;      // 07:00
   const DAY_END   = 26*60;     // 02:00 next day
   const SLOT_H = 56;
@@ -535,7 +536,7 @@
   // ★★★ 每次修改下面的 DEFAULT_STATE 預設資料後，把這個數字 +1 ★★★
   // 所有裝置（手機/電腦）偵測到版本號變了，就會自動改讀新的預設資料，
   // 不會再卡在瀏覽器裡的舊存檔。
-  const DATA_VERSION = 5;
+  const DATA_VERSION = 6;
 
   function uid(){ return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
 
@@ -549,12 +550,132 @@ const DEFAULT_STATE = {
           "id": "id-pinned-southbound",
           "name": "南下台南",
           "cat": "交通",
-          "start": 540,
-          "end": 720,
+          "start": 510,
+          "end": 630,
           "location": "台中市南屯區",
           "note": "穎穎出發接人",
           "detail": "",
           "pinned": true
+        },
+        {
+          "id": "id-mr6ixm0w-7mpvex",
+          "name": "牛肉爐-劉家莊牛肉爐",
+          "cat": "餐廳",
+          "start": 660,
+          "end": 780,
+          "location": "臺南市永康區正強里四維街21號",
+          "note": "電話訂位",
+          "detail": "06 233 5757"
+        },
+        {
+          "id": "id-mr6jeanc-stev6d",
+          "name": "五妃街 懷舊小棧杏仁豆腐冰",
+          "cat": "小吃",
+          "start": 780,
+          "end": 810,
+          "location": "台南市中西區五妃街206號",
+          "note": "杏仁豆腐冰",
+          "detail": "約 10:30-22:00；假日可能到21:00\n中午後～晚上\n你們同行必去，排甜點站"
+        },
+        {
+          "id": "id-mr6jewdl-0cnf80",
+          "name": "中場休息",
+          "cat": "休息",
+          "start": 810,
+          "end": 930,
+          "location": "",
+          "note": "",
+          "detail": ""
+        },
+        {
+          "id": "id-mr6klmul-b9xnhh",
+          "name": "林永泰興蜜餞行",
+          "cat": "特產",
+          "start": 990,
+          "end": 1020,
+          "location": "台南市安平區延平街84號(延平老店)",
+          "note": "蜜餞 / 芒果乾",
+          "detail": "安平運河店：台南市安平區安平路542號\n大片芒果乾、紅芒果乾、情人果、梅類蜜餞\n延平店約 11:30–19:00，週二三休；安平路店約 11:30–18:00，週一四休\n有兩間店，休假日不同，導航前先看分店"
+        },
+        {
+          "id": "id-mr6kly6l-4pmqht",
+          "name": "得意蝦餅",
+          "cat": "特產",
+          "start": 1020,
+          "end": 1050,
+          "location": "台南市安平區安平路123號",
+          "note": "蝦餅",
+          "detail": "蝦餅禮盒、油炸 / 非油炸口味\n平日約 10:00–19:00；週六日約 10:00–20:00\n跟熱富距離近，可以一起比較"
+        },
+        {
+          "id": "id-mr6km6cn-anf0cq",
+          "name": "熱富安平伴手禮",
+          "cat": "特產",
+          "start": 1050,
+          "end": 1080,
+          "location": "台南市安平區安平路133號",
+          "note": "蝦餅 / 牛舌餅",
+          "detail": "油炸 / 非油炸蝦餅、牛舌餅、古早味餅\n約 08:00–22:00\n開得早也收得晚，伴手禮很好排"
+        },
+        {
+          "id": "id-mr6kn1mn-i4jmtf",
+          "name": "威辰家-安平",
+          "cat": "交通",
+          "start": 960,
+          "end": 990,
+          "location": "",
+          "note": "",
+          "detail": ""
+        },
+        {
+          "id": "id-mr6ks1tl-z73579",
+          "name": "安平-武聖",
+          "cat": "交通",
+          "start": 1080,
+          "end": 1110,
+          "location": "",
+          "note": "",
+          "detail": ""
+        },
+        {
+          "id": "id-mr6kswkq-1354yj",
+          "name": "武聖夜市",
+          "cat": "夜市",
+          "start": 1110,
+          "end": 1230,
+          "location": "臺南市中西區光賢里武聖路69巷",
+          "note": "僅週六、日營業",
+          "detail": ""
+        },
+        {
+          "id": "id-mr6kur7v-jfie0u",
+          "name": "武聖-威辰家  十分鐘",
+          "cat": "交通",
+          "start": 1230,
+          "end": 1260,
+          "location": "",
+          "note": "",
+          "detail": ""
+        },
+        {
+          "id": "id-mr6kvdot-s7trua",
+          "name": "休息準備前往酒吧",
+          "cat": "休息",
+          "start": 1260,
+          "end": 1290,
+          "location": "",
+          "note": "",
+          "detail": ""
+        },
+        {
+          "id": "id-mr6kwzfc-dx72vd",
+          "name": "Taleland 樂島",
+          "cat": "酒吧",
+          "start": 1320,
+          "end": 1440,
+          "location": "台南市中西區中正路150巷5號",
+          "note": "",
+          "detail": ""
         }
       ]
     },
@@ -619,15 +740,6 @@ const DEFAULT_STATE = {
       "detail": ""
     },
     {
-      "id": "id-mr6bsdki-ao6nef",
-      "name": "奇美博物館",
-      "cat": "景點",
-      "duration": 120,
-      "location": "臺南市仁德區成功里文華路二段66號",
-      "note": "法老",
-      "detail": "需要買票\nhttps://inline.app/booking/-MPmUAqxXSf3n8STH2G_:inline-live-2/-MPmUB-GBHJgLJ3i6daK?language=zh-tw"
-    },
-    {
       "id": "id-mr6byfgr-6r5z05",
       "name": "牛肉鍋-溫體牛肉火鍋",
       "cat": "餐廳",
@@ -635,15 +747,6 @@ const DEFAULT_STATE = {
       "location": "台南市中西區中正路140號",
       "note": "可線上訂位",
       "detail": "https://inline.app/booking/-MPmUAqxXSf3n8STH2G_:inline-live-2/-MPmUB-GBHJgLJ3i6daK?language=zh-tw"
-    },
-    {
-      "id": "id-mr6c34zj-2kur2e",
-      "name": "牛肉爐-劉家莊牛肉爐",
-      "cat": "餐廳",
-      "duration": 120,
-      "location": "臺南市永康區正強里四維街21號",
-      "note": "電話訂位",
-      "detail": "06 233 5757"
     },
     {
       "id": "id-mr6c4nnb-xofp6s",
@@ -689,15 +792,6 @@ const DEFAULT_STATE = {
       "location": "台南市北區西門路四段101號，小北觀光夜市",
       "note": "冰品、果汁、芒果冰、草莓冰",
       "detail": "12:00-21:00；來源有週三休、也有週三四休"
-    },
-    {
-      "id": "id-mr6c9wxk-fekvua",
-      "name": "武聖夜市",
-      "cat": "夜市",
-      "duration": 90,
-      "location": "臺南市中西區光賢里武聖路69巷",
-      "note": "僅週六、日營業",
-      "detail": ""
     },
     {
       "id": "id-mr6c9ybr-rzmtqm",
@@ -943,24 +1037,6 @@ const DEFAULT_STATE = {
       "detail": "約 10:00–19:00\n適合下午，部分資料顯示週二可能休，出發前再確認"
     },
     {
-      "id": "id-mr6dnu08-urqbh6",
-      "name": "熱富安平伴手禮",
-      "cat": "特產",
-      "duration": 60,
-      "location": "台南市安平區安平路133號",
-      "note": "蝦餅 / 牛舌餅",
-      "detail": "油炸 / 非油炸蝦餅、牛舌餅、古早味餅\n約 08:00–22:00\n開得早也收得晚，伴手禮很好排"
-    },
-    {
-      "id": "id-mr6dolsc-1wt9wt",
-      "name": "得意蝦餅",
-      "cat": "特產",
-      "duration": 60,
-      "location": "台南市安平區安平路123號",
-      "note": "蝦餅",
-      "detail": "蝦餅禮盒、油炸 / 非油炸口味\n平日約 10:00–19:00；週六日約 10:00–20:00\n跟熱富距離近，可以一起比較"
-    },
-    {
       "id": "id-mr6dpyxh-u3935b",
       "name": "億載安平鮮蝦餅",
       "cat": "特產",
@@ -977,15 +1053,6 @@ const DEFAULT_STATE = {
       "location": "台南市安平區安平路578號",
       "note": "牛舌餅 / 椪餅",
       "detail": "牛舌餅、椪餅、手工禮盒\n週日至週五約 09:00–22:00；週六約 09:00–19:00\n營業時間長，適合最後補買"
-    },
-    {
-      "id": "id-mr6drja7-4st15u",
-      "name": "林永泰興蜜餞行",
-      "cat": "特產",
-      "duration": 60,
-      "location": "台南市安平區延平街84號(延平老店)",
-      "note": "蜜餞 / 芒果乾",
-      "detail": "安平運河店：台南市安平區安平路542號\n大片芒果乾、紅芒果乾、情人果、梅類蜜餞\n延平店約 11:30–19:00，週二三休；安平路店約 11:30–18:00，週一四休\n有兩間店，休假日不同，導航前先看分店"
     },
     {
       "id": "id-mr6dwara-5ujws8",
@@ -1076,15 +1143,6 @@ const DEFAULT_STATE = {
       "location": "台南市中西區民族路三段16號",
       "note": "燒肉飯",
       "detail": "約 10:00-21:00，週三休\n中午～晚上\n國華街正餐備案"
-    },
-    {
-      "id": "id-mr6e2o98-j6ioke",
-      "name": "五妃街 懷舊小棧杏仁豆腐冰",
-      "cat": "小吃",
-      "duration": 30,
-      "location": "台南市中西區五妃街206號",
-      "note": "杏仁豆腐冰",
-      "detail": "約 10:30-22:00；假日可能到21:00\n中午後～晚上\n你們同行必去，排甜點站"
     },
     {
       "id": "id-mr6e36j2-nitmmt",
@@ -1220,6 +1278,15 @@ const DEFAULT_STATE = {
       "location": "台南市安南區海佃路一段215號",
       "note": "吃就對了",
       "detail": "吃  就  對  了"
+    },
+    {
+      "id": "id-mr6k0g0p-p18xsw",
+      "name": "奇美博物館",
+      "cat": "景點",
+      "duration": 120,
+      "location": "臺南市仁德區成功里文華路二段66號",
+      "note": "法老",
+      "detail": "需要買票\nhttps://inline.app/booking/-MPmUAqxXSf3n8STH2G_:inline-live-2/-MPmUB-GBHJgLJ3i6daK?language=zh-tw"
     }
   ]
 };
@@ -1316,7 +1383,7 @@ const DEFAULT_STATE = {
     if(total < DAY_START) total += 1440;
     return total;
   }
-  function snap30(min){ return Math.round(min/30)*30; }
+  function snapT(min){ return Math.round(min/STEP)*STEP; }
   function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
 
   /* ============ rendering ============ */
@@ -1385,7 +1452,7 @@ const DEFAULT_STATE = {
     itemsLayer.innerHTML = '';
     items.forEach(it=>{
       const top = (clamp(it.start,DAY_START,DAY_END)-DAY_START)/30*SLOT_H;
-      const h = Math.max((it.end-it.start)/30*SLOT_H, 30);
+      const h = Math.max((it.end-it.start)/30*SLOT_H, 18);
       const card = document.createElement('div');
       card.className = 'sched-card' + (overlapIds.has(it.id)?' overlap':'');
       card.style.top = top+'px';
@@ -1624,7 +1691,7 @@ const DEFAULT_STATE = {
     const day = selectedDay();
 
     if(day==='unsched'){
-      const duration = Math.max(15, parseInt(f_duration.value,10) || 60);
+      const duration = Math.max(STEP, parseInt(f_duration.value,10) || 60);
       if(editCtx.mode==='new'){
         state.unscheduled.push(mkUn(name,cat,duration,location,note,detail));
       } else if(editCtx.mode==='unsched'){
@@ -1647,9 +1714,9 @@ const DEFAULT_STATE = {
         showToast('時間格式錯誤，請用 HH:MM 且結束需晚於開始');
         return;
       }
-      s = snap30(s); e = snap30(e);
-      s = clamp(s, DAY_START, DAY_END-30);
-      e = clamp(e, s+30, DAY_END);
+      s = snapT(s); e = snapT(e);
+      s = clamp(s, DAY_START, DAY_END-STEP);
+      e = clamp(e, s+STEP, DAY_END);
 
       if(editCtx.mode==='new'){
         state.days[day].items.push(mk(name,cat,s,e,location,note,detail));
@@ -1712,7 +1779,7 @@ const DEFAULT_STATE = {
         id: found.id,
         name: found.name,
         cat: found.cat,
-        duration: Math.max(30, found.end - found.start),
+        duration: Math.max(STEP, found.end - found.start),
         location: found.location||'',
         note: found.note||'',
         detail: found.detail||''
@@ -1791,7 +1858,7 @@ const DEFAULT_STATE = {
           else {
             state.unscheduled.push({
               id: it.id, name: it.name, cat: it.cat,
-              duration: Math.max(30, it.end - it.start),
+              duration: Math.max(STEP, it.end - it.start),
               location: it.location||'', note: it.note||'', detail: it.detail||''
             });
             moved++;
@@ -1951,10 +2018,10 @@ const DEFAULT_STATE = {
           const withinY = ev.clientY >= wrapRect.top && ev.clientY <= wrapRect.bottom;
           if(withinX && withinY){
             const offsetY = (ev.clientY - wrapRect.top) + scheduleWrap.scrollTop;
-            let startMin = DAY_START + Math.round(offsetY/SLOT_H)*30;
+            let startMin = snapT(DAY_START + offsetY/SLOT_H*30);
             const dur = ref.type==='unsched' ? data.duration : (data.end-data.start);
-            startMin = clamp(startMin, DAY_START, DAY_END-30);
-            let endMin = clamp(startMin+dur, startMin+30, DAY_END);
+            startMin = clamp(startMin, DAY_START, DAY_END-STEP);
+            let endMin = clamp(startMin+dur, startMin+STEP, DAY_END);
             placeItemOnSchedule(ref, data, startMin, endMin);
           }
         }
