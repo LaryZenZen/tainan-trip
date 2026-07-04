@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>台南週末行程表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2b2420;
+    --paper:#fbf6ee;
+    --paper-2:#f3ead9;
+    --brick:#c1442d;
+    --brick-dark:#9c3521;
+    --canal:#1f6f6b;
+    --gold:#d4a237;
+    --line:#e4d8c3;
+    --danger:#e0342c;
+    --danger-bg:#fdeceb;
+    --slot-h:56px;
+    --radius:14px;
+    --shadow:0 2px 10px rgba(43,36,32,.10);
+    --cat-交通:#6b7a8f;
+    --cat-餐廳:#e0813a;
+    --cat-休息:#9c9186;
+    --cat-景點:#3f9142;
+    --cat-小吃:#d4a237;
+    --cat-特產:#8a5cb0;
+    --cat-酒吧:#c0447f;
+    --cat-夜市:#1f6f6b;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:"Noto Sans TC",sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    font-size:16px;
+    line-height:1.5;
+    overscroll-behavior:none;
+  }
+  h1,h2,h3,.serif{font-family:"Noto Serif TC",serif;}
+  button{font-family:inherit;}
+  #app{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    height:100dvh;
+    max-width:560px;
+    margin:0 auto;
+    background:var(--paper);
+    position:relative;
+    overflow:hidden;
+    box-shadow:0 0 40px rgba(0,0,0,.08);
+  }
+
+  /* ---------- Header ---------- */
+  header.top{
+    padding:14px 16px 0 16px;
+    background:linear-gradient(180deg,var(--brick) 0%, var(--brick-dark) 100%);
+    color:#fff8ee;
+    flex-shrink:0;
+  }
+  header.top .title-row{
+    display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+  }
+  header.top h1{
+    margin:0 0 10px 0;
+    font-size:20px;
+    letter-spacing:.5px;
+    font-weight:900;
+  }
+  header.top .subtitle{
+    font-size:12px; opacity:.85; margin-bottom:10px;
+  }
+  .day-tabs{
+    display:flex; gap:6px; padding-bottom:10px;
+  }
+  .day-tab{
+    flex:1;
+    min-height:44px;
+    border:none;
+    border-radius:10px 10px 0 0;
+    background:rgba(255,255,255,.14);
+    color:#fff8ee;
+    font-size:15px;
+    font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    gap:6px;
+    cursor:pointer;
+  }
+  .day-tab.active{
+    background:var(--paper);
+    color:var(--brick-dark);
+  }
+  .day-tab .cnt{
+    font-size:11px;
+    background:rgba(0,0,0,.15);
+    padding:1px 6px;
+    border-radius:8px;
+  }
+  .day-tab.active .cnt{ background:var(--paper-2); color:var(--brick-dark); }
+
+  /* ---------- overlap banner ---------- */
+  .overlap-banner{
+    display:none;
+    align-items:center;
+    gap:8px;
+    background:var(--danger-bg);
+    color:var(--danger);
+    border-bottom:1px solid #f3c8c5;
+    padding:9px 16px;
+    font-size:13.5px;
+    font-weight:700;
+    flex-shrink:0;
+  }
+  .overlap-banner.show{display:flex;}
+
+  /* ---------- Schedule ---------- */
+  .schedule-wrap{
+    flex:1;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    position:relative;
+    background:var(--paper);
+  }
+  .schedule-grid{
+    position:relative;
+    padding-left:56px;
+  }
+  .slot-row{
+    height:var(--slot-h);
+    border-bottom:1px solid var(--line);
+    position:relative;
+  }
+  .slot-row.hour{ border-bottom:1px solid #d8c8a8; }
+  .slot-time-label{
+    position:absolute;
+    left:-56px;
+    top:-8px;
+    width:52px;
+    text-align:right;
+    font-size:11.5px;
+    color:#8a7c68;
+    font-weight:700;
+    padding-right:6px;
+  }
+  .slot-row.dragover{ background:rgba(212,162,55,.18); }
+  .items-layer{
+    position:absolute;
+    top:0; left:56px; right:8px;
+    pointer-events:none;
+  }
+  .sched-card{
+    position:absolute;
+    left:0; right:0;
+    border-radius:10px;
+    border-left:6px solid var(--c);
+    background:color-mix(in srgb, var(--c) 14%, white);
+    padding:6px 9px;
+    pointer-events:auto;
+    overflow:hidden;
+    cursor:pointer;
+    box-shadow:var(--shadow);
+    touch-action:none;
+  }
+  .sched-card.overlap{
+    outline:2px solid var(--danger);
+    outline-offset:-2px;
+    background:repeating-linear-gradient(135deg, var(--danger-bg), var(--danger-bg) 8px, color-mix(in srgb, var(--c) 14%, white) 8px, color-mix(in srgb, var(--c) 14%, white) 16px);
+  }
+  .sched-card .time{
+    font-size:11.5px; font-weight:700; color:var(--ink); opacity:.75;
+  }
+  .sched-card .name{
+    font-size:14.5px; font-weight:700; color:var(--ink);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .sched-card .meta{
+    font-size:11px; color:#6b5f4f; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .sched-card .warn-icon{
+    position:absolute; top:4px; right:6px; font-size:13px;
+  }
+  .sched-card.dragging{ opacity:.35; }
+
+  /* ---------- Bottom nav ---------- */
+  nav.bottom{
+    flex-shrink:0;
+    display:flex;
+    border-top:1px solid var(--line);
+    background:var(--paper);
+    padding:6px 6px calc(6px + env(safe-area-inset-bottom)) 6px;
+    gap:6px;
+  }
+  nav.bottom button{
+    flex:1;
+    min-height:52px;
+    border:none;
+    background:transparent;
+    border-radius:12px;
+    color:var(--ink);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:2px;
+    font-size:11.5px;
+    font-weight:700;
+  }
+  nav.bottom button .ic{ font-size:19px; }
+  nav.bottom button:active{ background:var(--paper-2); }
+  nav.bottom button.primary{ color:var(--brick); }
+
+  /* ---------- Unscheduled panel (slide up) ---------- */
+  .panel-scrim{
+    position:absolute; inset:0; background:rgba(43,36,32,.35);
+    display:none; z-index:20;
+  }
+  .panel-scrim.show{display:block;}
+  .unscheduled-panel{
+    position:absolute; left:0; right:0; bottom:0;
+    background:var(--paper);
+    border-radius:18px 18px 0 0;
+    box-shadow:0 -6px 24px rgba(0,0,0,.18);
+    transform:translateY(100%);
+    transition:transform .22s ease;
+    z-index:21;
+    max-height:66%;
+    display:flex; flex-direction:column;
+  }
+  .unscheduled-panel.show{ transform:translateY(0); }
+  .panel-handle{
+    width:40px; height:5px; background:var(--line); border-radius:3px;
+    margin:10px auto 4px auto;
+  }
+  .panel-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:4px 16px 8px 16px;
+  }
+  .panel-header h2{ font-size:16px; margin:0; }
+  .panel-header .hint{ font-size:11.5px; color:#8a7c68; }
+  .panel-body{
+    overflow-y:auto;
+    padding:4px 12px 16px 12px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .unsched-card{
+    display:flex; align-items:center; gap:10px;
+    border-radius:12px;
+    border-left:6px solid var(--c);
+    background:color-mix(in srgb, var(--c) 10%, white);
+    padding:10px 12px;
+    min-height:44px;
+    box-shadow:var(--shadow);
+    touch-action:none;
+  }
+  .unsched-card .info{ flex:1; min-width:0; }
+  .unsched-card .name{ font-size:15px; font-weight:700; }
+  .unsched-card .meta{ font-size:11.5px; color:#6b5f4f; }
+  .unsched-card .drag-handle{
+    font-size:18px; color:#a3937a; padding:6px;
+  }
+  .unsched-card .add-btn{
+    border:none; background:var(--brick); color:#fff;
+    border-radius:9px; min-height:36px; padding:0 12px;
+    font-size:13px; font-weight:700;
+  }
+  .empty-note{
+    text-align:center; color:#a3937a; font-size:13.5px; padding:20px 10px;
+  }
+
+  /* ---------- Modal / bottom sheet ---------- */
+  .modal-scrim{
+    position:absolute; inset:0; background:rgba(43,36,32,.45);
+    display:none; z-index:30; align-items:flex-end;
+  }
+  .modal-scrim.show{display:flex;}
+  .sheet{
+    background:var(--paper);
+    width:100%;
+    max-height:92%;
+    border-radius:18px 18px 0 0;
+    display:flex; flex-direction:column;
+    box-shadow:0 -8px 28px rgba(0,0,0,.2);
+  }
+  .sheet-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px 10px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .sheet-header h2{ margin:0; font-size:17px; }
+  .icon-btn{
+    border:none; background:var(--paper-2); color:var(--ink);
+    width:36px; height:36px; border-radius:50%;
+    font-size:18px; display:flex; align-items:center; justify-content:center;
+  }
+  .sheet-body{
+    overflow-y:auto; padding:14px 16px 10px 16px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .field label{
+    display:block; font-size:12.5px; font-weight:700; color:#8a7c68; margin-bottom:5px;
+  }
+  .field input[type=text], .field textarea, .field select{
+    width:100%; border:1.5px solid var(--line); border-radius:10px;
+    padding:10px 11px; font-size:15px; font-family:inherit; background:#fff; color:var(--ink);
+    min-height:44px;
+  }
+  .field textarea{ min-height:74px; resize:vertical; line-height:1.5; }
+  .field .row2{ display:flex; gap:10px; }
+  .field .row2 > div{ flex:1; }
+  .cat-picker{ display:flex; flex-wrap:wrap; gap:8px; }
+  .cat-chip{
+    border:2px solid transparent; border-radius:20px; padding:8px 14px;
+    font-size:13.5px; font-weight:700; min-height:38px;
+    background:var(--paper-2); color:var(--ink); cursor:pointer;
+  }
+  .cat-chip.sel{ border-color:var(--c); background:color-mix(in srgb, var(--c) 18%, white); }
+  .day-picker{ display:flex; gap:8px; }
+  .day-picker button{
+    flex:1; min-height:44px; border-radius:10px; border:2px solid var(--line);
+    background:#fff; font-weight:700; color:var(--ink);
+  }
+  .day-picker button.sel{ border-color:var(--brick); background:color-mix(in srgb,var(--brick) 12%, white); color:var(--brick-dark); }
+  .sheet-footer{
+    display:flex; gap:10px; padding:12px 16px calc(12px + env(safe-area-inset-bottom)) 16px;
+    border-top:1px solid var(--line);
+  }
+  .btn{
+    flex:1; min-height:48px; border:none; border-radius:12px; font-size:15px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .btn.save{ background:var(--brick); color:#fff; }
+  .btn.delete{ background:var(--danger-bg); color:var(--danger); flex:0 0 48px; }
+  .btn.ghost{ background:var(--paper-2); color:var(--ink); }
+  .overlap-flag{
+    display:none;
+    align-items:center; gap:6px;
+    background:var(--danger-bg); color:var(--danger);
+    border-radius:10px; padding:8px 10px; font-size:12.5px; font-weight:700;
+  }
+  .overlap-flag.show{display:flex;}
+
+  /* drag ghost */
+  .drag-ghost{
+    position:fixed; z-index:999; pointer-events:none;
+    border-radius:10px; border-left:6px solid var(--c);
+    background:color-mix(in srgb, var(--c) 22%, white);
+    padding:8px 12px; box-shadow:0 8px 24px rgba(0,0,0,.28);
+    font-size:14px; font-weight:700; color:var(--ink);
+    opacity:.95; max-width:240px;
+  }
+  .drag-toast{
+    position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:#fff8ee; font-size:12.5px; font-weight:700;
+    padding:7px 14px; border-radius:20px; z-index:40; display:none;
+  }
+  .drag-toast.show{ display:block; }
+
+  .toast{
+    position:absolute; bottom:78px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:#fff8ee; font-size:13px; font-weight:700;
+    padding:9px 16px; border-radius:22px; z-index:60;
+    opacity:0; transition:opacity .25s; pointer-events:none;
+  }
+  .toast.show{ opacity:1; }
+
+  input[type=file]{ display:none; }
+
+  @media (min-width:560px){
+    body{ background:#e9ddc8; }
+    #app{ margin:16px auto; height:calc(100vh - 32px); height:calc(100dvh - 32px); border-radius:20px; overflow:hidden; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="top">
+    <div class="title-row">
+      <h1 class="serif">🏮 台南週末行程表</h1>
+    </div>
+    <div class="subtitle">點行程卡片查看詳情．點「待排行程」加入時間表</div>
+    <div class="day-tabs" id="dayTabs"></div>
+  </header>
+
+  <div class="overlap-banner" id="overlapBanner">⚠️ <span id="overlapText"></span></div>
+
+  <div class="schedule-wrap" id="scheduleWrap">
+    <div class="schedule-grid" id="scheduleGrid">
+      <div class="items-layer" id="itemsLayer"></div>
+    </div>
+  </div>
+
+  <nav class="bottom">
+    <button class="primary" id="btnAdd"><span class="ic">➕</span>新增行程</button>
+    <button id="btnUnsched"><span class="ic">🗂️</span>待排行程<span id="unschedBadge"></span></button>
+    <button id="btnExport"><span class="ic">📤</span>匯出</button>
+    <button id="btnImport"><span class="ic">📥</span>匯入</button>
+    <button id="btnReset"><span class="ic">♻️</span>重置</button>
+  </nav>
+
+  <!-- unscheduled slide-up panel -->
+  <div class="panel-scrim" id="panelScrim"></div>
+  <div class="unscheduled-panel" id="unschedPanel">
+    <div class="panel-handle"></div>
+    <div class="panel-header">
+      <h2 class="serif">待排行程清單</h2>
+      <span class="hint">按住卡片可拖曳，或點「加入」選時間</span>
+    </div>
+    <div class="panel-body" id="unschedList"></div>
+  </div>
+
+  <div class="drag-toast" id="dragToast">拖曳到時間表上放開即可加入</div>
+
+  <!-- item modal / bottom sheet -->
+  <div class="modal-scrim" id="modalScrim">
+    <div class="sheet">
+      <div class="sheet-header">
+        <h2 class="serif" id="sheetTitle">行程詳情</h2>
+        <button class="icon-btn" id="btnCloseSheet">✕</button>
+      </div>
+      <div class="sheet-body" id="sheetBody">
+        <div class="field">
+          <label>行程名稱</label>
+          <input type="text" id="f_name" placeholder="例如：漁光島看夕陽">
+        </div>
+        <div class="field">
+          <label>類別</label>
+          <div class="cat-picker" id="f_cat"></div>
+        </div>
+
+        <div class="field" id="f_dayWrap">
+          <label>安排到哪一天</label>
+          <div class="day-picker" id="f_day">
+            <button data-day="unsched">尚未安排</button>
+            <button data-day="sat">星期六</button>
+            <button data-day="sun">星期日</button>
+          </div>
+        </div>
+
+        <div class="field" id="f_timeWrap">
+          <label>開始時間 / 結束時間</label>
+          <div class="row2">
+            <div><input type="text" id="f_start" placeholder="09:00"></div>
+            <div><input type="text" id="f_end" placeholder="12:00"></div>
+          </div>
+        </div>
+        <div class="field" id="f_durWrap">
+          <label>預估時長（分鐘，尚未安排時使用）</label>
+          <input type="text" id="f_duration" placeholder="60">
+        </div>
+
+        <div class="overlap-flag" id="f_overlapFlag">⚠️ 此時段與其他行程重疊，可自行調整或保留</div>
+
+        <div class="field">
+          <label>地點</label>
+          <input type="text" id="f_location" placeholder="例如：台南市安平區...">
+        </div>
+        <div class="field">
+          <label>備註</label>
+          <input type="text" id="f_note" placeholder="簡短備註，例如：四人用餐">
+        </div>
+        <div class="field">
+          <label>詳細資訊（可多行）</label>
+          <textarea id="f_detail" placeholder="例如：純酒吧、已訂位、地址、營業時間..."></textarea>
+        </div>
+      </div>
+      <div class="sheet-footer">
+        <button class="btn delete" id="btnDelete">🗑️</button>
+        <button class="btn ghost" id="btnCancel">取消</button>
+        <button class="btn save" id="btnSave">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ constants ============ */
+  const SLOT_MIN = 30;
+  const DAY_START = 7*60;      // 07:00
+  const DAY_END   = 26*60;     // 02:00 next day
+  const SLOT_H = 56;
+  const CATS = ["景點","小吃","餐廳","酒吧","夜市","特產","休息","交通"];
+  const STORAGE_KEY = "tainan-itinerary-state-v1";
+
+  function uid(){ return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
+
+  function sampleData(){
+    return {
+      activeDay: 'sat',
+      days: {
+        sat: { label:'星期六', items: [
+          mk('出發台南','交通',540,720,'','三小時車程，記得先加滿油',''),
+          mk('牛肉爐','餐廳',720,840,'台南市','四人用餐',''),
+          mk('午休','休息',840,900,'','',''),
+          mk('漁光島','景點',960,1110,'台南市安平區漁光島','建議帶野餐墊看夕陽',''),
+        ]},
+        sun: { label:'星期日', items: [] }
+      },
+      unscheduled: [
+        mkUn('懷舊小棧杏仁豆腐冰','小吃',30,'台南市中西區','',''),
+        mkUn('安平特產採買','特產',45,'安平老街','',''),
+        mkUn('酒吧','酒吧',120,'','建議晚上前往','純酒吧／可點餐：\n訂位狀態：\n地址：\n備註：'),
+        mkUn('武聖夜市','夜市',90,'台南市中西區武聖夜市','僅週六、日營業',''),
+        mkUn('花園夜市','夜市',90,'台南市北區花園夜市','僅週四、六、日營業',''),
+        mkUn('丹丹漢堡安平店','小吃',20,'安平區','',''),
+      ]
+    };
+  }
+  function mk(name,cat,start,end,loc,note,detail){
+    return { id:uid(), name, cat, start, end, location:loc||'', note:note||'', detail:detail||'' };
+  }
+  function mkUn(name,cat,duration,loc,note,detail){
+    return { id:uid(), name, cat, duration, location:loc||'', note:note||'', detail:detail||'' };
+  }
+
+  let state = null;
+  let dragCtx = null; // active drag info
+
+  /* ============ persistence ============ */
+  // Uses localStorage so the data survives page refreshes once this file is
+  // hosted on a normal website (e.g. GitHub Pages). Each visitor's browser
+  // keeps its own copy — this is NOT shared between people automatically.
+  async function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){ state = JSON.parse(raw); return; }
+    }catch(e){ /* localStorage unavailable or corrupted */ }
+    state = sampleData();
+  }
+  let saveTimer=null;
+  function saveState(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }catch(e){ console.warn('save failed', e); }
+    }, 250);
+  }
+
+  /* ============ time helpers ============ */
+  function fmt(min){
+    let h = Math.floor(min/60), m = min%60;
+    let moon = '';
+    if(h>=24){ h-=24; moon=' 🌙'; }
+    return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+moon;
+  }
+  function parseTimeStr(str, refIsAfterMidnightHint){
+    // accepts "9:00", "09:00", "25:00" etc. Returns minutes-of-schedule (7:00-26:00 space) or null.
+    if(!str) return null;
+    const m = str.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if(!m) return null;
+    let h = parseInt(m[1],10), mi = parseInt(m[2],10);
+    if(mi<0||mi>59) return null;
+    let total = h*60+mi;
+    // if it's small hour (0-6) treat as after-midnight (next day) since our day runs 07:00-26:00
+    if(h>=0 && h<7) total += 1440;
+    if(total < DAY_START) total += 1440;
+    return total;
+  }
+  function snap30(min){ return Math.round(min/30)*30; }
+  function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+
+  /* ============ rendering ============ */
+  const scheduleGrid = document.getElementById('scheduleGrid');
+  const itemsLayer = document.getElementById('itemsLayer');
+  const dayTabs = document.getElementById('dayTabs');
+  const overlapBanner = document.getElementById('overlapBanner');
+  const overlapText = document.getElementById('overlapText');
+
+  function buildGridRows(){
+    // remove old rows (keep itemsLayer)
+    Array.from(scheduleGrid.querySelectorAll('.slot-row')).forEach(r=>r.remove());
+    let idx=0;
+    for(let t=DAY_START; t<DAY_END; t+=SLOT_MIN){
+      const row = document.createElement('div');
+      row.className = 'slot-row' + (t%60===0?' hour':'');
+      row.dataset.slotStart = t;
+      if(t%60===0){
+        const lab = document.createElement('div');
+        lab.className='slot-time-label';
+        lab.textContent = fmt(t);
+        row.appendChild(lab);
+      }
+      scheduleGrid.insertBefore(row, itemsLayer);
+      idx++;
+    }
+    const totalH = idx*SLOT_H;
+    scheduleGrid.style.height = totalH+'px';
+    itemsLayer.style.height = totalH+'px';
+  }
+
+  function computeOverlaps(items){
+    const sorted = items.slice().sort((a,b)=>a.start-b.start);
+    const overlapIds = new Set();
+    for(let i=0;i<sorted.length;i++){
+      for(let j=i+1;j<sorted.length;j++){
+        if(sorted[j].start < sorted[i].end && sorted[j].end > sorted[i].start){
+          overlapIds.add(sorted[i].id); overlapIds.add(sorted[j].id);
+        }
+      }
+    }
+    return overlapIds;
+  }
+
+  function renderDayTabs(){
+    dayTabs.innerHTML = '';
+    ['sat','sun'].forEach(d=>{
+      const btn = document.createElement('button');
+      btn.className = 'day-tab' + (state.activeDay===d?' active':'');
+      const cnt = state.days[d].items.length;
+      btn.innerHTML = `${state.days[d].label} <span class="cnt">${cnt}</span>`;
+      btn.addEventListener('click', ()=>{ state.activeDay=d; renderAll(); saveState(); });
+      dayTabs.appendChild(btn);
+    });
+  }
+
+  function renderSchedule(){
+    const items = state.days[state.activeDay].items;
+    const overlapIds = computeOverlaps(items);
+    if(overlapIds.size>0){
+      overlapBanner.classList.add('show');
+      overlapText.textContent = `此時段與其他行程重疊（共 ${overlapIds.size} 個行程），可點開調整時間`;
+    } else {
+      overlapBanner.classList.remove('show');
+    }
+    itemsLayer.innerHTML = '';
+    items.forEach(it=>{
+      const top = (clamp(it.start,DAY_START,DAY_END)-DAY_START)/30*SLOT_H;
+      const h = Math.max((it.end-it.start)/30*SLOT_H, 30);
+      const card = document.createElement('div');
+      card.className = 'sched-card' + (overlapIds.has(it.id)?' overlap':'');
+      card.style.top = top+'px';
+      card.style.height = h+'px';
+      card.style.setProperty('--c', `var(--cat-${it.cat})`);
+      card.dataset.id = it.id;
+      card.innerHTML = `
+        ${overlapIds.has(it.id)?'<div class="warn-icon">⚠️</div>':''}
+        <div class="time">${fmt(it.start)}–${fmt(it.end)}</div>
+        <div class="name">${escapeHtml(it.name)}</div>
+        <div class="meta">${escapeHtml(it.location||it.note||'')}</div>
+      `;
+      attachCardOpen(card, it, 'sched');
+      attachDrag(card, {type:'sched', id:it.id});
+      itemsLayer.appendChild(card);
+    });
+  }
+
+  function renderUnscheduled(){
+    const list = document.getElementById('unschedList');
+    const badge = document.getElementById('unschedBadge');
+    badge.textContent = state.unscheduled.length ? ' '+state.unscheduled.length : '';
+    list.innerHTML = '';
+    if(state.unscheduled.length===0){
+      list.innerHTML = '<div class="empty-note">目前沒有待排行程 🎉</div>';
+      return;
+    }
+    state.unscheduled.forEach(it=>{
+      const card = document.createElement('div');
+      card.className = 'unsched-card';
+      card.style.setProperty('--c', `var(--cat-${it.cat})`);
+      card.dataset.id = it.id;
+      card.innerHTML = `
+        <div class="drag-handle">⠿</div>
+        <div class="info">
+          <div class="name">${escapeHtml(it.name)}</div>
+          <div class="meta">${it.cat} ・ ${it.duration}分鐘${it.location?(' ・ '+escapeHtml(it.location)):''}</div>
+        </div>
+        <button class="add-btn">加入</button>
+      `;
+      card.querySelector('.add-btn').addEventListener('click', (e)=>{
+        e.stopPropagation();
+        openAddTimeFlow(it);
+      });
+      card.addEventListener('click', (e)=>{
+        if(e.target.classList.contains('add-btn')) return;
+        openModalFor(it,'unsched');
+      });
+      attachDrag(card, {type:'unsched', id:it.id});
+      list.appendChild(card);
+    });
+  }
+
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function renderAll(){
+    renderDayTabs();
+    renderSchedule();
+    renderUnscheduled();
+  }
+
+  /* ============ modal (add / edit / detail) ============ */
+  const modalScrim = document.getElementById('modalScrim');
+  const sheetTitle = document.getElementById('sheetTitle');
+  const f_name = document.getElementById('f_name');
+  const f_cat = document.getElementById('f_cat');
+  const f_dayWrap = document.getElementById('f_dayWrap');
+  const f_day = document.getElementById('f_day');
+  const f_timeWrap = document.getElementById('f_timeWrap');
+  const f_start = document.getElementById('f_start');
+  const f_end = document.getElementById('f_end');
+  const f_durWrap = document.getElementById('f_durWrap');
+  const f_duration = document.getElementById('f_duration');
+  const f_location = document.getElementById('f_location');
+  const f_note = document.getElementById('f_note');
+  const f_detail = document.getElementById('f_detail');
+  const f_overlapFlag = document.getElementById('f_overlapFlag');
+  const btnDelete = document.getElementById('btnDelete');
+
+  CATS.forEach(c=>{
+    const chip = document.createElement('div');
+    chip.className='cat-chip';
+    chip.textContent=c;
+    chip.dataset.cat=c;
+    chip.style.setProperty('--c', `var(--cat-${c})`);
+    chip.addEventListener('click', ()=>{
+      f_cat.querySelectorAll('.cat-chip').forEach(x=>x.classList.remove('sel'));
+      chip.classList.add('sel');
+    });
+    f_cat.appendChild(chip);
+  });
+
+  let editCtx = null; // {mode:'new'|'sched'|'unsched', id}
+
+  function selectedCat(){
+    const el = f_cat.querySelector('.cat-chip.sel');
+    return el ? el.dataset.cat : CATS[0];
+  }
+  function setSelectedCat(cat){
+    f_cat.querySelectorAll('.cat-chip').forEach(x=>x.classList.toggle('sel', x.dataset.cat===cat));
+  }
+  function setSelectedDay(day){
+    f_day.querySelectorAll('button').forEach(b=>b.classList.toggle('sel', b.dataset.day===day));
+  }
+  function selectedDay(){
+    const el = f_day.querySelector('button.sel');
+    return el ? el.dataset.day : 'unsched';
+  }
+
+  f_day.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      setSelectedDay(b.dataset.day);
+      refreshTimeVisibility();
+      checkOverlapPreview();
+    });
+  });
+  [f_start,f_end].forEach(inp=>inp.addEventListener('input', checkOverlapPreview));
+
+  function refreshTimeVisibility(){
+    const day = selectedDay();
+    if(day==='unsched'){
+      f_timeWrap.style.display='none';
+      f_durWrap.style.display='block';
+    } else {
+      f_timeWrap.style.display='block';
+      f_durWrap.style.display='none';
+    }
+  }
+
+  function checkOverlapPreview(){
+    const day = selectedDay();
+    if(day==='unsched'){ f_overlapFlag.classList.remove('show'); return; }
+    const s = parseTimeStr(f_start.value);
+    const e = parseTimeStr(f_end.value);
+    if(s==null || e==null || e<=s){ f_overlapFlag.classList.remove('show'); return; }
+    const items = state.days[day].items.filter(it => !(editCtx && editCtx.mode==='sched' && it.id===editCtx.id));
+    const hasOverlap = items.some(it => s < it.end && e > it.start);
+    f_overlapFlag.classList.toggle('show', hasOverlap);
+  }
+
+  function openModalFor(data, mode){
+    editCtx = { mode, id: data.id };
+    sheetTitle.textContent = mode==='sched' ? '行程詳情' : (mode==='unsched' ? '待排行程詳情' : '新增行程');
+    f_name.value = data.name||'';
+    setSelectedCat(data.cat||CATS[0]);
+    if(mode==='sched'){
+      setSelectedDay(state.activeDay);
+      f_start.value = fmt(data.start).replace(' 🌙','');
+      f_end.value = fmt(data.end).replace(' 🌙','');
+      f_duration.value = '';
+    } else {
+      setSelectedDay('unsched');
+      f_duration.value = data.duration||60;
+      f_start.value=''; f_end.value='';
+    }
+    f_location.value = data.location||'';
+    f_note.value = data.note||'';
+    f_detail.value = data.detail||'';
+    btnDelete.style.display = 'flex';
+    refreshTimeVisibility();
+    checkOverlapPreview();
+    modalScrim.classList.add('show');
+  }
+
+  function openNewModal(){
+    editCtx = { mode:'new', id: null };
+    sheetTitle.textContent = '新增行程';
+    f_name.value='';
+    setSelectedCat(CATS[0]);
+    setSelectedDay('unsched');
+    f_start.value=''; f_end.value='';
+    f_duration.value='60';
+    f_location.value=''; f_note.value=''; f_detail.value='';
+    btnDelete.style.display='none';
+    refreshTimeVisibility();
+    f_overlapFlag.classList.remove('show');
+    modalScrim.classList.add('show');
+  }
+
+  function openAddTimeFlow(unschedItem){
+    editCtx = { mode:'unsched', id: unschedItem.id };
+    sheetTitle.textContent = '選擇時間並加入時間表';
+    f_name.value = unschedItem.name;
+    setSelectedCat(unschedItem.cat);
+    setSelectedDay(state.activeDay);
+    const s = DAY_START;
+    f_start.value = fmt(s);
+    f_end.value = fmt(s + (unschedItem.duration||60));
+    f_duration.value = unschedItem.duration||60;
+    f_location.value = unschedItem.location||'';
+    f_note.value = unschedItem.note||'';
+    f_detail.value = unschedItem.detail||'';
+    btnDelete.style.display='flex';
+    refreshTimeVisibility();
+    checkOverlapPreview();
+    modalScrim.classList.add('show');
+  }
+
+  function closeModal(){
+    modalScrim.classList.remove('show');
+    editCtx = null;
+  }
+  document.getElementById('btnCloseSheet').addEventListener('click', closeModal);
+  document.getElementById('btnCancel').addEventListener('click', closeModal);
+  modalScrim.addEventListener('click', (e)=>{ if(e.target===modalScrim) closeModal(); });
+
+  document.getElementById('btnSave').addEventListener('click', ()=>{
+    const name = f_name.value.trim() || '未命名行程';
+    const cat = selectedCat();
+    const location = f_location.value.trim();
+    const note = f_note.value.trim();
+    const detail = f_detail.value;
+    const day = selectedDay();
+
+    if(day==='unsched'){
+      const duration = Math.max(15, parseInt(f_duration.value,10) || 60);
+      if(editCtx.mode==='new'){
+        state.unscheduled.push(mkUn(name,cat,duration,location,note,detail));
+      } else if(editCtx.mode==='unsched'){
+        const it = state.unscheduled.find(x=>x.id===editCtx.id);
+        if(it){ Object.assign(it,{name,cat,duration,location,note,detail}); }
+      } else if(editCtx.mode==='sched'){
+        // moved from schedule back to unscheduled
+        const dstate = state.days[state.activeDay];
+        const idx = dstate.items.findIndex(x=>x.id===editCtx.id);
+        if(idx>-1){
+          const old = dstate.items[idx];
+          dstate.items.splice(idx,1);
+          state.unscheduled.push(mkUn(name,cat, old.end-old.start, location, note, detail));
+        }
+      }
+    } else {
+      let s = parseTimeStr(f_start.value);
+      let e = parseTimeStr(f_end.value);
+      if(s==null || e==null || e<=s){
+        showToast('時間格式錯誤，請用 HH:MM 且結束需晚於開始');
+        return;
+      }
+      s = snap30(s); e = snap30(e);
+      s = clamp(s, DAY_START, DAY_END-30);
+      e = clamp(e, s+30, DAY_END);
+
+      if(editCtx.mode==='new'){
+        state.days[day].items.push(mk(name,cat,s,e,location,note,detail));
+      } else if(editCtx.mode==='sched'){
+        // find item; may need to move across days if day changed vs activeDay
+        let found=null, foundDay=null;
+        ['sat','sun'].forEach(d=>{
+          const idx = state.days[d].items.findIndex(x=>x.id===editCtx.id);
+          if(idx>-1){ found = state.days[d].items[idx]; foundDay = d; }
+        });
+        if(found){
+          if(foundDay!==day){
+            state.days[foundDay].items = state.days[foundDay].items.filter(x=>x.id!==editCtx.id);
+            state.days[day].items.push(Object.assign(found,{name,cat,start:s,end:e,location,note,detail}));
+          } else {
+            Object.assign(found,{name,cat,start:s,end:e,location,note,detail});
+          }
+        }
+      } else if(editCtx.mode==='unsched'){
+        const idx = state.unscheduled.findIndex(x=>x.id===editCtx.id);
+        if(idx>-1) state.unscheduled.splice(idx,1);
+        state.days[day].items.push(mk(name,cat,s,e,location,note,detail));
+        state.activeDay = day;
+      }
+    }
+    saveState();
+    renderAll();
+    closeModal();
+    showToast('已儲存');
+  });
+
+  btnDelete.addEventListener('click', ()=>{
+    if(!editCtx || !editCtx.id) return;
+    if(!confirm('確定要刪除這個行程嗎？')) { return; }
+    if(editCtx.mode==='sched'){
+      ['sat','sun'].forEach(d=>{ state.days[d].items = state.days[d].items.filter(x=>x.id!==editCtx.id); });
+    } else if(editCtx.mode==='unsched'){
+      state.unscheduled = state.unscheduled.filter(x=>x.id!==editCtx.id);
+    }
+    saveState();
+    renderAll();
+    closeModal();
+    showToast('已刪除');
+  });
+
+  function attachCardOpen(card, item, mode){
+    card.addEventListener('click', (e)=>{
+      if(dragCtx && dragCtx.moved) return;
+      openModalFor(item, mode);
+    });
+  }
+
+  /* ============ unscheduled slide panel ============ */
+  const unschedPanel = document.getElementById('unschedPanel');
+  const panelScrim = document.getElementById('panelScrim');
+  function openPanel(){ unschedPanel.classList.add('show'); panelScrim.classList.add('show'); }
+  function closePanel(){ unschedPanel.classList.remove('show'); panelScrim.classList.remove('show'); }
+  document.getElementById('btnUnsched').addEventListener('click', ()=>{
+    if(unschedPanel.classList.contains('show')) closePanel(); else openPanel();
+  });
+  panelScrim.addEventListener('click', closePanel);
+
+  /* ============ top bar buttons ============ */
+  document.getElementById('btnAdd').addEventListener('click', openNewModal);
+
+  document.getElementById('btnExport').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = '台南行程表.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    showToast('已匯出 JSON');
+  });
+
+  const importInput = document.createElement('input');
+  importInput.type='file'; importInput.accept='application/json';
+  document.body.appendChild(importInput);
+  document.getElementById('btnImport').addEventListener('click', ()=> importInput.click());
+  importInput.addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const data = JSON.parse(reader.result);
+        if(!data.days || !data.unscheduled) throw new Error('格式不符');
+        if(confirm('匯入將覆蓋目前所有行程資料，確定嗎？')){
+          state = data;
+          if(!state.activeDay) state.activeDay='sat';
+          saveState();
+          renderAll();
+          showToast('匯入成功');
+        }
+      }catch(err){
+        alert('匯入失敗：檔案格式錯誤');
+      }
+    };
+    reader.readAsText(file);
+    importInput.value='';
+  });
+
+  document.getElementById('btnReset').addEventListener('click', ()=>{
+    if(confirm('確定要重置為範例資料嗎？目前的編輯將會遺失。')){
+      state = sampleData();
+      saveState();
+      renderAll();
+      showToast('已重置範例資料');
+    }
+  });
+
+  /* ============ toast ============ */
+  let toastTimer=null;
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  /* ============ drag (pointer events, unifies mouse + touch) ============ */
+  const scheduleWrap = document.getElementById('scheduleWrap');
+  const dragToast = document.getElementById('dragToast');
+  let ghostEl = null;
+
+  function attachDrag(el, ref){
+    el.addEventListener('pointerdown', (e)=>{
+      if(e.target.classList.contains('add-btn')) return;
+      startDrag(e, el, ref);
+    });
+  }
+
+  function startDrag(e, el, ref){
+    e.preventDefault();
+    const startX = e.clientX, startY = e.clientY;
+    let started = false;
+    dragCtx = { ref, moved:false };
+
+    function findData(){
+      if(ref.type==='unsched'){
+        return state.unscheduled.find(x=>x.id===ref.id);
+      } else {
+        return state.days[state.activeDay].items.find(x=>x.id===ref.id);
+      }
+    }
+
+    function onMove(ev){
+      const dx = ev.clientX-startX, dy = ev.clientY-startY;
+      if(!started){
+        if(Math.abs(dx)<8 && Math.abs(dy)<8) return;
+        started = true;
+        dragCtx.moved = true;
+        closePanel();
+        const data = findData();
+        if(!data) return;
+        ghostEl = document.createElement('div');
+        ghostEl.className='drag-ghost';
+        ghostEl.style.setProperty('--c', `var(--cat-${data.cat})`);
+        const dur = ref.type==='unsched' ? data.duration : (data.end-data.start);
+        ghostEl.textContent = `${data.name}（${dur}分鐘）`;
+        document.body.appendChild(ghostEl);
+        dragToast.classList.add('show');
+        el.classList.add('dragging');
+      }
+      if(ghostEl){
+        ghostEl.style.left = (ev.clientX+14)+'px';
+        ghostEl.style.top = (ev.clientY+14)+'px';
+      }
+      highlightSlotAt(ev.clientX, ev.clientY);
+    }
+
+    function onUp(ev){
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      clearSlotHighlight();
+      dragToast.classList.remove('show');
+      el.classList.remove('dragging');
+      if(ghostEl){ ghostEl.remove(); ghostEl=null; }
+
+      if(started){
+        const data = findData();
+        if(data){
+          const wrapRect = scheduleWrap.getBoundingClientRect();
+          const withinX = ev.clientX >= wrapRect.left && ev.clientX <= wrapRect.right;
+          const withinY = ev.clientY >= wrapRect.top && ev.clientY <= wrapRect.bottom;
+          if(withinX && withinY){
+            const offsetY = (ev.clientY - wrapRect.top) + scheduleWrap.scrollTop;
+            let startMin = DAY_START + Math.round(offsetY/SLOT_H)*30;
+            const dur = ref.type==='unsched' ? data.duration : (data.end-data.start);
+            startMin = clamp(startMin, DAY_START, DAY_END-30);
+            let endMin = clamp(startMin+dur, startMin+30, DAY_END);
+            placeItemOnSchedule(ref, data, startMin, endMin);
+          }
+        }
+      }
+      setTimeout(()=>{ if(dragCtx) dragCtx.moved=false; }, 50);
+    }
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  }
+
+  function highlightSlotAt(x,y){
+    clearSlotHighlight();
+    const wrapRect = scheduleWrap.getBoundingClientRect();
+    if(x<wrapRect.left||x>wrapRect.right||y<wrapRect.top||y>wrapRect.bottom) return;
+    const offsetY = (y - wrapRect.top) + scheduleWrap.scrollTop;
+    const idx = Math.floor(offsetY/SLOT_H);
+    const rows = scheduleGrid.querySelectorAll('.slot-row');
+    if(rows[idx]) rows[idx].classList.add('dragover');
+  }
+  function clearSlotHighlight(){
+    scheduleGrid.querySelectorAll('.slot-row.dragover').forEach(r=>r.classList.remove('dragover'));
+  }
+
+  function placeItemOnSchedule(ref, data, startMin, endMin){
+    if(ref.type==='unsched'){
+      state.unscheduled = state.unscheduled.filter(x=>x.id!==ref.id);
+      state.days[state.activeDay].items.push(mk(data.name, data.cat, startMin, endMin, data.location, data.note, data.detail));
+      showToast(`已加入 ${state.days[state.activeDay].label}：${fmt(startMin)}–${fmt(endMin)}`);
+    } else {
+      const it = state.days[state.activeDay].items.find(x=>x.id===ref.id);
+      if(it){ it.start=startMin; it.end=endMin; showToast('時間已更新'); }
+    }
+    saveState();
+    renderAll();
+  }
+
+  /* ============ init ============ */
+  async function init(){
+    await loadState();
+    if(!state.activeDay) state.activeDay='sat';
+    buildGridRows();
+    renderAll();
+  }
+  init();
+
+})();
+</script>
+</body>
+</html>
