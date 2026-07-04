@@ -530,7 +530,12 @@
   const DAY_END   = 26*60;     // 02:00 next day
   const SLOT_H = 56;
   const CATS = ["景點","小吃","丹丹漢堡","餐廳","酒吧","夜市","特產","休息","交通"];
-  const STORAGE_KEY = "tainan-itinerary-state-v4";
+  const STORAGE_KEY = "tainan-itinerary-state";
+
+  // ★★★ 每次修改下面的 DEFAULT_STATE 預設資料後，把這個數字 +1 ★★★
+  // 所有裝置（手機/電腦）偵測到版本號變了，就會自動改讀新的預設資料，
+  // 不會再卡在瀏覽器裡的舊存檔。
+  const DATA_VERSION = 5;
 
   function uid(){ return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
 
@@ -1268,15 +1273,24 @@ const DEFAULT_STATE = {
   async function loadState(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
-      if(raw){ state = JSON.parse(raw); return; }
+      if(raw){
+        const parsed = JSON.parse(raw);
+        // 版本不同代表程式碼裡的預設資料更新過 → 改用新的預設資料
+        if(parsed && parsed._v === DATA_VERSION){
+          state = parsed;
+          return;
+        }
+      }
     }catch(e){ /* localStorage unavailable or corrupted */ }
     state = sampleData();
+    state._v = DATA_VERSION;
   }
   let saveTimer=null;
   function saveState(){
     clearTimeout(saveTimer);
     saveTimer = setTimeout(()=>{
       try{
+        state._v = DATA_VERSION;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       }catch(e){ console.warn('save failed', e); }
     }, 250);
