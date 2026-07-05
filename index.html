@@ -66,6 +66,29 @@
   header.top .title-row{
     display:flex; align-items:baseline; justify-content:space-between; gap:8px;
   }
+  .acct-btn{
+    border:none;
+    border-radius:16px;
+    background:rgba(255,255,255,.18);
+    color:#fff8ee;
+    font-size:12px; font-weight:700;
+    min-height:32px; padding:0 12px;
+    cursor:pointer;
+    flex-shrink:0;
+    max-width:150px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .acct-btn.on{ background:rgba(255,255,255,.32); }
+  .uid-box{
+    background:var(--paper-2);
+    border-radius:10px;
+    padding:8px 10px;
+    font-size:11px;
+    font-family:monospace;
+    word-break:break-all;
+    user-select:all; -webkit-user-select:all;
+    margin:8px 0 4px 0;
+  }
   header.top h1{
     margin:0 0 10px 0;
     font-size:20px;
@@ -461,6 +484,7 @@
   <header class="top">
     <div class="title-row">
       <h1 class="serif">🏮 台南週末行程表</h1>
+      <button class="acct-btn" id="btnAccount">☁️ 登入</button>
     </div>
     <div class="subtitle">點行程卡片查看詳情．點「待排行程」加入時間表</div>
     <div class="day-tabs" id="dayTabs"></div>
@@ -565,6 +589,9 @@
   <div class="toast" id="toast"></div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script>
 (function(){
   "use strict";
@@ -581,7 +608,7 @@
   // ★★★ 每次修改下面的 DEFAULT_STATE 預設資料後，把這個數字 +1 ★★★
   // 所有裝置（手機/電腦）偵測到版本號變了，就會自動改讀新的預設資料，
   // 不會再卡在瀏覽器裡的舊存檔。
-  const DATA_VERSION = 6;
+  const DATA_VERSION = 7;
 
   function uid(){ return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
 
@@ -597,27 +624,17 @@ const DEFAULT_STATE = {
           "cat": "交通",
           "start": 510,
           "end": 630,
-          "location": "台中市南屯區",
-          "note": "穎穎出發接人",
+          "location": "",
+          "note": "",
           "detail": "",
           "pinned": true
-        },
-        {
-          "id": "id-mr6ixm0w-7mpvex",
-          "name": "牛肉爐-劉家莊牛肉爐",
-          "cat": "餐廳",
-          "start": 660,
-          "end": 780,
-          "location": "臺南市永康區正強里四維街21號",
-          "note": "電話訂位",
-          "detail": "06 233 5757"
         },
         {
           "id": "id-mr6jeanc-stev6d",
           "name": "五妃街 懷舊小棧杏仁豆腐冰",
           "cat": "小吃",
-          "start": 780,
-          "end": 810,
+          "start": 750,
+          "end": 780,
           "location": "台南市中西區五妃街206號",
           "note": "杏仁豆腐冰",
           "detail": "約 10:30-22:00；假日可能到21:00\n中午後～晚上\n你們同行必去，排甜點站"
@@ -626,8 +643,8 @@ const DEFAULT_STATE = {
           "id": "id-mr6jewdl-0cnf80",
           "name": "中場休息",
           "cat": "休息",
-          "start": 810,
-          "end": 930,
+          "start": 780,
+          "end": 960,
           "location": "",
           "note": "",
           "detail": ""
@@ -664,10 +681,10 @@ const DEFAULT_STATE = {
         },
         {
           "id": "id-mr6kn1mn-i4jmtf",
-          "name": "威辰家-安平",
+          "name": "家-安平",
           "cat": "交通",
           "start": 960,
-          "end": 990,
+          "end": 980,
           "location": "",
           "note": "",
           "detail": ""
@@ -677,7 +694,7 @@ const DEFAULT_STATE = {
           "name": "安平-武聖",
           "cat": "交通",
           "start": 1080,
-          "end": 1110,
+          "end": 1100,
           "location": "",
           "note": "",
           "detail": ""
@@ -694,10 +711,10 @@ const DEFAULT_STATE = {
         },
         {
           "id": "id-mr6kur7v-jfie0u",
-          "name": "武聖-威辰家  十分鐘",
+          "name": "武聖-家",
           "cat": "交通",
           "start": 1230,
-          "end": 1260,
+          "end": 1250,
           "location": "",
           "note": "",
           "detail": ""
@@ -721,12 +738,113 @@ const DEFAULT_STATE = {
           "location": "台南市中西區中正路150巷5號",
           "note": "",
           "detail": ""
+        },
+        {
+          "id": "id-mr7ep9wi-ek4j73",
+          "name": "三大牛肉火鍋（創始店）",
+          "cat": "餐廳",
+          "start": 660,
+          "end": 750,
+          "location": "臺南市永康區崑山里國光三街3號",
+          "note": "7/18 11:00 4位",
+          "detail": "用餐一個半小時\n訂位保留10分鐘"
+        },
+        {
+          "id": "id-mr7erdqu-wmy8xe",
+          "name": "家-牛肉爐  30分鐘",
+          "cat": "交通",
+          "start": 630,
+          "end": 660,
+          "location": "",
+          "note": "",
+          "detail": ""
         }
       ]
     },
     "sun": {
       "label": "星期日",
-      "items": []
+      "items": [
+        {
+          "id": "id-mr6zbpp8-sp1qoh",
+          "name": "睡覺",
+          "cat": "休息",
+          "start": 420,
+          "end": 600,
+          "location": "",
+          "note": "",
+          "detail": ""
+        },
+        {
+          "id": "id-mr7etdy2-c07nqz",
+          "name": "國華街／永樂市場 富盛號碗粿",
+          "cat": "小吃",
+          "start": 600,
+          "end": 620,
+          "location": "台南市中西區民族路三段11號",
+          "note": "碗粿、魚羹",
+          "detail": "約 07:00-16:30 或 17:00，週四休，售完為止\n早上～中午\n國華街第一梯隊"
+        },
+        {
+          "id": "id-mr7etquh-roka40",
+          "name": "國華街／永樂市場 阿松割包",
+          "cat": "小吃",
+          "start": 620,
+          "end": 640,
+          "location": "台南市中西區國華街三段181號",
+          "note": "割包",
+          "detail": "約 08:00-15:30，週三、四休；部分來源寫到18:00，建議早去\n早上～中午\n跟富盛號、金得春捲很順"
+        },
+        {
+          "id": "id-mr7eu4gf-9fd4sw",
+          "name": "國華街／永樂市場 金得春捲",
+          "cat": "小吃",
+          "start": 640,
+          "end": 660,
+          "location": "台南市中西區民族路三段19號",
+          "note": "春捲",
+          "detail": "約 07:00-17:00，週二休\n早上～下午前段\n適合四人分食"
+        },
+        {
+          "id": "id-mr7euo23-ul2uet",
+          "name": "蜷尾家 甘味処",
+          "cat": "小吃",
+          "start": 660,
+          "end": 680,
+          "location": "台南市中西區正興街92號",
+          "note": "霜淇淋、散步甜食",
+          "detail": "IG 顯示週一至日 11:00-20:00，週四至18:00，售完為止\n老牌熱門冰品；正興街/國華街區可順路，但熱門時段會排隊"
+        },
+        {
+          "id": "id-mr7ev5yk-c7ck9b",
+          "name": "林家白糖粿 / 林家茂子蕃薯椪白糖粿",
+          "cat": "小吃",
+          "start": 680,
+          "end": 700,
+          "location": "台南市中西區尊王路6號",
+          "note": "白糖粿、蕃薯椪、傳統炸甜點",
+          "detail": "IG：10:30-18:30；休假看 Google / IG\n原國華街相關舊址資訊很多，目前建議以尊王路6號為準；適合跟西市場、國華街串"
+        },
+        {
+          "id": "id-mr7evpfe-wtvm1l",
+          "name": "吃丹丹漢堡",
+          "cat": "丹丹漢堡",
+          "start": 700,
+          "end": 760,
+          "location": "台南市北區成功路380號",
+          "note": "吃就對了",
+          "detail": "吃  就  對  了"
+        },
+        {
+          "id": "id-mr7exfvv-5futid",
+          "name": "回家",
+          "cat": "交通",
+          "start": 780,
+          "end": 960,
+          "location": "",
+          "note": "",
+          "detail": ""
+        }
+      ]
     }
   },
   "unscheduled": [
@@ -956,24 +1074,6 @@ const DEFAULT_STATE = {
       "detail": "食記：13:00-18:00，週二三公休；IG食記有週末延長版本"
     },
     {
-      "id": "id-mr6d0typ-g5obc3",
-      "name": "蜷尾家 甘味処",
-      "cat": "小吃",
-      "duration": 30,
-      "location": "台南市中西區正興街92號",
-      "note": "霜淇淋、散步甜食",
-      "detail": "IG 顯示週一至日 11:00-20:00，週四至18:00，售完為止\n老牌熱門冰品；正興街/國華街區可順路，但熱門時段會排隊"
-    },
-    {
-      "id": "id-mr6d1f0f-zw0ejf",
-      "name": "林家白糖粿 / 林家茂子蕃薯椪白糖粿",
-      "cat": "小吃",
-      "duration": 30,
-      "location": "台南市中西區尊王路6號",
-      "note": "白糖粿、蕃薯椪、傳統炸甜點",
-      "detail": "IG：10:30-18:30；休假看 Google / IG\n原國華街相關舊址資訊很多，目前建議以尊王路6號為準；適合跟西市場、國華街串"
-    },
-    {
       "id": "id-mr6d2atd-s2relz",
       "name": "萬客樓",
       "cat": "小吃",
@@ -1100,15 +1200,6 @@ const DEFAULT_STATE = {
       "detail": "牛舌餅、椪餅、手工禮盒\n週日至週五約 09:00–22:00；週六約 09:00–19:00\n營業時間長，適合最後補買"
     },
     {
-      "id": "id-mr6dwara-5ujws8",
-      "name": "國華街／永樂市場 富盛號碗粿",
-      "cat": "小吃",
-      "duration": 30,
-      "location": "台南市中西區民族路三段11號",
-      "note": "碗粿、魚羹",
-      "detail": "約 07:00-16:30 或 17:00，週四休，售完為止\n早上～中午\n國華街第一梯隊"
-    },
-    {
       "id": "id-mr6dwoeb-74vba3",
       "name": "國華街／永樂市場 一味品碗粿魚羹",
       "cat": "小吃",
@@ -1116,24 +1207,6 @@ const DEFAULT_STATE = {
       "location": "台南市中西區國華街三段177-179號，永樂市場111、112攤",
       "note": "碗粿、魚羹",
       "detail": "約 05:00-17:00，週二休\n早餐～中午\n富盛號替代或比較組"
-    },
-    {
-      "id": "id-mr6dx49o-ksus4y",
-      "name": "國華街／永樂市場 阿松割包",
-      "cat": "小吃",
-      "duration": 30,
-      "location": "台南市中西區國華街三段181號",
-      "note": "割包",
-      "detail": "約 08:00-15:30，週三、四休；部分來源寫到18:00，建議早去\n早上～中午\n跟富盛號、金得春捲很順"
-    },
-    {
-      "id": "id-mr6dxkb3-i5wo25",
-      "name": "國華街／永樂市場 金得春捲",
-      "cat": "小吃",
-      "duration": 30,
-      "location": "台南市中西區民族路三段19號",
-      "note": "春捲",
-      "detail": "約 07:00-17:00，週二休\n早上～下午前段\n適合四人分食"
     },
     {
       "id": "id-mr6dxxor-4fblq3",
@@ -1280,15 +1353,6 @@ const DEFAULT_STATE = {
       "detail": "約 17:00-24:00，常見版本為週一休\t晚餐～宵夜\t晚上線，不適合早上"
     },
     {
-      "id": "id-dandan-1",
-      "name": "吃丹丹漢堡",
-      "cat": "丹丹漢堡",
-      "duration": 60,
-      "location": "台南市北區成功路380號",
-      "note": "吃就對了",
-      "detail": "吃  就  對  了"
-    },
-    {
       "id": "id-dandan-2",
       "name": "吃丹丹漢堡",
       "cat": "丹丹漢堡",
@@ -1332,6 +1396,15 @@ const DEFAULT_STATE = {
       "location": "臺南市仁德區成功里文華路二段66號",
       "note": "法老",
       "detail": "需要買票\nhttps://inline.app/booking/-MPmUAqxXSf3n8STH2G_:inline-live-2/-MPmUB-GBHJgLJ3i6daK?language=zh-tw"
+    },
+    {
+      "id": "id-mr6ixm0w-7mpvex",
+      "name": "牛肉爐-劉家莊牛肉爐",
+      "cat": "餐廳",
+      "duration": 120,
+      "location": "臺南市永康區正強里四維街21號",
+      "note": "電話訂位",
+      "detail": "06 233 5757"
     }
   ]
 };
@@ -1378,6 +1451,84 @@ const DEFAULT_STATE = {
   let state = null;
   let dragCtx = null; // active drag info
 
+  /* ============ ☁️ Firebase 雲端同步 ============ */
+  const firebaseConfig = {
+    apiKey: "AIzaSyAVDvCRbf60sdMff0DRoFoP0ymlFPpzm2w",
+    authDomain: "tainan-trip-schedule.firebaseapp.com",
+    databaseURL: "https://tainan-trip-schedule-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "tainan-trip-schedule",
+    storageBucket: "tainan-trip-schedule.firebasestorage.app",
+    messagingSenderId: "777328264392",
+    appId: "1:777328264392:web:32e21b0b7b7e709cc251fd"
+  };
+  const DB_PATH = 'trip';
+  let fbDb = null, fbAuth = null;
+  let cloudReady = false;        // 已收到雲端第一筆回應
+  let cloudHasData = false;      // 雲端目前有資料
+  let lastPushedJson = null;     // 避免自己寫入後的回音重複渲染
+  let firebaseOk = false;
+  try{
+    firebase.initializeApp(firebaseConfig);
+    fbDb = firebase.database();
+    fbAuth = firebase.auth();
+    firebaseOk = true;
+  }catch(e){ console.warn('Firebase init failed, running local-only:', e); }
+
+  // Firebase 會把空陣列存成「不存在」，讀回來時補齊必要欄位
+  function normalizeState(s){
+    s = s || {};
+    s.activeDay = s.activeDay || 'sat';
+    s.days = s.days || {};
+    s.days.sat = s.days.sat || { label:'星期六', items: [] };
+    s.days.sun = s.days.sun || { label:'星期日', items: [] };
+    s.days.sat.items = s.days.sat.items || [];
+    s.days.sun.items = s.days.sun.items || [];
+    s.unscheduled = s.unscheduled || [];
+    return s;
+  }
+
+  function startCloudSync(){
+    if(!firebaseOk) return;
+    fbDb.ref(DB_PATH).on('value', (snap)=>{
+      cloudReady = true;
+      const val = snap.val();
+      if(val === null){
+        cloudHasData = false;
+        // 雲端是空的：若已登入，將目前內容當作第一份資料發布
+        if(fbAuth.currentUser && state) pushToCloud();
+        return; // 維持本機內容
+      }
+      cloudHasData = true;
+      const incoming = JSON.stringify(val);
+      if(incoming === lastPushedJson) return; // 自己剛寫入的回音
+      const keepDay = state ? state.activeDay : null;
+      state = normalizeState(val);
+      if(keepDay) state.activeDay = keepDay; // 分頁切換不跟著別人跑
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+      renderAll();
+    }, (err)=>{
+      console.warn('cloud read failed:', err);
+    });
+  }
+
+  function pushToCloud(){
+    if(!firebaseOk || !fbAuth.currentUser) return;
+    const payload = JSON.parse(JSON.stringify(state));
+    delete payload._v;
+    const json = JSON.stringify(payload);
+    lastPushedJson = json;
+    fbDb.ref(DB_PATH).set(payload).then(()=>{
+      cloudHasData = true;
+    }).catch((err)=>{
+      lastPushedJson = null;
+      if(String(err).toLowerCase().includes('permission')){
+        showToast('此帳號沒有編輯權限，變更只保存在此裝置');
+      } else {
+        showToast('雲端儲存失敗，變更已保存在此裝置');
+      }
+    });
+  }
+
   /* ============ persistence ============ */
   // Uses localStorage so the data survives page refreshes once this file is
   // hosted on a normal website (e.g. GitHub Pages). Each visitor's browser
@@ -1405,6 +1556,7 @@ const DEFAULT_STATE = {
         state._v = DATA_VERSION;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       }catch(e){ console.warn('save failed', e); }
+      pushToCloud();
     }, 250);
   }
 
@@ -2157,11 +2309,87 @@ const DEFAULT_STATE = {
   }
 
   /* ============ init ============ */
+  const btnAccount = document.getElementById('btnAccount');
+
+  function updateAccountButton(user){
+    if(user){
+      btnAccount.textContent = '☁️ ' + (user.displayName || user.email || '已登入');
+      btnAccount.classList.add('on');
+    } else {
+      btnAccount.textContent = '☁️ 登入';
+      btnAccount.classList.remove('on');
+    }
+  }
+
+  function showAccountPanel(user){
+    const scrim = document.createElement('div');
+    scrim.className = 'confirm-scrim';
+    scrim.innerHTML = `
+      <div class="confirm-box">
+        <div class="confirm-msg"></div>
+        <div class="uid-box"></div>
+        <div style="font-size:11.5px;color:#8a7c68;margin-bottom:12px;">↑ 這是你的 UID（點一下全選）。首次設定時要貼進 Firebase 資料庫規則。</div>
+        <div class="confirm-btns">
+          <button class="btn ghost">關閉</button>
+          <button class="btn delete" style="flex:1;">登出</button>
+        </div>
+      </div>`;
+    scrim.querySelector('.confirm-msg').textContent = (user.displayName||'') + '\n' + (user.email||'');
+    scrim.querySelector('.uid-box').textContent = user.uid;
+    const btns = scrim.querySelectorAll('button');
+    btns[0].addEventListener('click', ()=> scrim.remove());
+    btns[1].addEventListener('click', ()=>{
+      fbAuth.signOut();
+      scrim.remove();
+      showToast('已登出，此裝置改為僅本機保存');
+    });
+    scrim.addEventListener('click', (e)=>{ if(e.target===scrim) scrim.remove(); });
+    document.getElementById('app').appendChild(scrim);
+  }
+
+  btnAccount.addEventListener('click', async ()=>{
+    if(!firebaseOk){
+      showToast('雲端功能載入失敗，目前為僅本機模式');
+      return;
+    }
+    const user = fbAuth.currentUser;
+    if(user){
+      showAccountPanel(user);
+    } else {
+      try{
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await fbAuth.signInWithPopup(provider);
+      }catch(err){
+        if(err && (err.code==='auth/popup-blocked' || err.code==='auth/operation-not-supported-in-this-environment')){
+          try{ await fbAuth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); }catch(e2){ showToast('登入失敗：'+(e2.code||e2)); }
+        } else if(err && err.code==='auth/popup-closed-by-user'){
+          /* 使用者自己關掉，不提示 */
+        } else {
+          showToast('登入失敗：'+((err&&err.code)||err));
+        }
+      }
+    }
+  });
+
+  if(firebaseOk){
+    fbAuth.onAuthStateChanged((user)=>{
+      updateAccountButton(user);
+      if(user){
+        showToast('已登入：'+(user.displayName||user.email||''));
+        // 雲端還沒有任何資料時，把目前內容當作第一份發布上去
+        if(cloudReady && !cloudHasData && state){
+          pushToCloud();
+        }
+      }
+    });
+  }
+
   async function init(){
     await loadState();
     if(!state.activeDay) state.activeDay='sat';
     buildGridRows();
     renderAll();
+    startCloudSync();
   }
   init();
 
