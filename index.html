@@ -320,6 +320,20 @@
     min-height:44px;
   }
   .field textarea{ min-height:74px; resize:vertical; line-height:1.5; }
+  .loc-row{ display:flex; gap:8px; }
+  .loc-row input{ flex:1; min-width:0; }
+  .map-btn{
+    flex-shrink:0;
+    border:none; border-radius:10px;
+    background:color-mix(in srgb, var(--canal) 14%, white);
+    color:var(--canal);
+    min-height:44px; min-width:60px;
+    padding:0 10px;
+    font-size:13px; font-weight:700;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    line-height:1.15; cursor:pointer;
+  }
+  .map-btn:active{ background:color-mix(in srgb, var(--canal) 26%, white); }
   .field .row2{ display:flex; gap:10px; }
   .field .row2 > div{ flex:1; }
   .cat-picker{ display:flex; flex-wrap:wrap; gap:8px; }
@@ -399,6 +413,32 @@
   }
   .drag-toast.show{ display:block; }
 
+  /* floating route button (Google Maps multi-stop) */
+  .route-fab{
+    position:absolute;
+    right:14px;
+    bottom:calc(84px + env(safe-area-inset-bottom));
+    z-index:15;
+    border:none;
+    border-radius:24px;
+    min-height:46px;
+    padding:0 16px;
+    background:var(--canal);
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    display:flex; align-items:center; gap:6px;
+    box-shadow:0 4px 14px rgba(31,111,107,.4);
+    cursor:pointer;
+  }
+  .route-fab:active{ background:#175955; }
+  .route-fab .cnt{
+    background:rgba(255,255,255,.25);
+    border-radius:10px;
+    padding:1px 7px;
+    font-size:12px;
+  }
+
   .toast{
     position:absolute; bottom:78px; left:50%; transform:translateX(-50%);
     background:var(--ink); color:#fff8ee; font-size:13px; font-weight:700;
@@ -455,6 +495,8 @@
 
   <div class="drag-toast" id="dragToast">拖曳到時間表上放開即可加入</div>
 
+  <button class="route-fab" id="btnRoute" style="display:none;">🗺️ 路線<span class="cnt" id="routeCnt"></span></button>
+
   <!-- item modal / bottom sheet -->
   <div class="modal-scrim" id="modalScrim">
     <div class="sheet">
@@ -497,7 +539,10 @@
 
         <div class="field">
           <label>地點</label>
-          <input type="text" id="f_location" placeholder="例如：台南市安平區...">
+          <div class="loc-row">
+            <input type="text" id="f_location" placeholder="例如：台南市安平區...">
+            <button class="map-btn" id="btnMap" type="button">🗺️<span>地圖</span></button>
+          </div>
         </div>
         <div class="field">
           <label>備註</label>
@@ -1449,6 +1494,7 @@ const DEFAULT_STATE = {
     } else {
       overlapBanner.classList.remove('show');
     }
+    updateRouteButton(items);
     itemsLayer.innerHTML = '';
     items.forEach(it=>{
       const top = (clamp(it.start,DAY_START,DAY_END)-DAY_START)/30*SLOT_H;
@@ -1551,6 +1597,55 @@ const DEFAULT_STATE = {
   const f_overlapFlag = document.getElementById('f_overlapFlag');
   const btnDelete = document.getElementById('btnDelete');
   const btnUnschedule = document.getElementById('btnUnschedule');
+
+  /* ============ 🗺️ 一鍵路線：串起當天吃喝買行程 ============ */
+  const ROUTE_CATS = new Set(['小吃','丹丹漢堡','餐廳','酒吧','夜市','特產','景點']);
+  const btnRoute = document.getElementById('btnRoute');
+  const routeCnt = document.getElementById('routeCnt');
+
+  function routeStops(items){
+    return items
+      .filter(it => ROUTE_CATS.has(it.cat) && ((it.location||'').trim() || (it.name||'').trim()))
+      .sort((a,b)=>a.start-b.start)
+      .map(it => (it.location||'').trim() || it.name.trim());
+  }
+
+  function updateRouteButton(items){
+    const stops = routeStops(items);
+    if(stops.length > 0){
+      btnRoute.style.display = 'flex';
+      routeCnt.textContent = stops.length;
+    } else {
+      btnRoute.style.display = 'none';
+    }
+  }
+
+  btnRoute.addEventListener('click', ()=>{
+    let stops = routeStops(state.days[state.activeDay].items);
+    if(stops.length === 0) return;
+    let url;
+    if(stops.length === 1){
+      url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(stops[0]);
+    } else {
+      if(stops.length > 10){
+        showToast('地點超過 10 個，路線只包含前 10 站');
+        stops = stops.slice(0, 10);
+      }
+      url = 'https://www.google.com/maps/dir/' + stops.map(s=>encodeURIComponent(s)).join('/');
+    }
+    window.open(url, '_blank', 'noopener');
+  });
+
+  // 🗺️ 開啟 Google 地圖：優先用「地點」欄位，沒填就用行程名稱搜尋
+  document.getElementById('btnMap').addEventListener('click', ()=>{
+    const q = (f_location.value.trim() || f_name.value.trim());
+    if(!q){
+      showToast('請先填寫地點或行程名稱');
+      return;
+    }
+    const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+    window.open(url, '_blank', 'noopener');
+  });
 
   CATS.forEach(c=>{
     const chip = document.createElement('div');
